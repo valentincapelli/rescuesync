@@ -76,8 +76,31 @@ src/main/java/com/grupo21/rescuesync/
 
 - Rutas REST en plural y en castellano: `/api/emergencias`, `/api/emergencias/{id}/lotes`, `/api/ofertas`.
 
+## Modelo de datos (E2-03)
+
+Entidades JPA en `model/` (todas extienden `BaseEntity`: `id` + `createdAt`/`updatedAt` auditados):
+
+- **Emergencia**: tipo de desastre, nivel de gravedad, zona afectada, descripción, municipio, estado y `bonitaCaseId` (se completa cuando se inicia la instancia en Bonita, E2-11/12). Tiene muchos `Lote`.
+- **Lote**: pertenece a una `Emergencia`. Tipo de recurso, descripción, cantidad requerida, unidad de medida y estado (`PUBLICADO`, `CUBIERTO`, `PARCIALMENTE_CUBIERTO`, `REFORMULADO`, `CERRADO`). Tiene muchas `Oferta`.
+- **Oferta**: pertenece a un `Lote`. ONG (por nombre, hasta que exista login de ONGs en E2-10), cantidad ofrecida, observaciones y estado (`PENDIENTE`, `EVALUADA`, `SELECCIONADA`, `RECHAZADA`, `COMPROMETIDA`, `FINALIZADA`). Una ONG que cubre varios lotes carga una oferta por lote.
+
+Enums de dominio también en `model/`: `TipoDesastre`, `NivelGravedad`, `EstadoEmergencia`, `TipoRecurso`, `EstadoLote`, `EstadoOferta` (mapeados como `VARCHAR` con `@Enumerated(STRING)`, no como índice numérico, para que la base sea legible y estable ante cambios de orden).
+
+Repositorios Spring Data en `repository/`: `EmergenciaRepository`, `LoteRepository`, `OfertaRepository`, con query methods básicos (`findByEstado`, `findByEmergenciaId`, `findByLoteId`, etc.).
+
+Con `spring.jpa.hibernate.ddl-auto=update` (default en `application.yml`), al levantar el backend contra el PostgreSQL de `docker-compose.yml` Hibernate crea solo las tablas `emergencias`, `lotes`, `ofertas` con sus FKs. Para verificar:
+
+```bash
+docker compose up -d          # desde DSSD/
+cd rescuesync-backend
+mvn spring-boot:run
+# en otra terminal:
+docker exec -it rescuesync-postgres psql -U rescuesync -d rescuesync -c "\dt"
+```
+
+Cuando el modelo se estabilice conviene pasar a `ddl-auto=validate` + migraciones (Flyway), pero por ahora no hace falta para el alcance de la Entrega 2.
+
 ## Próximas tareas que se apoyan en esta base
 
-- **E2-03** Modelo de datos: entidades en `model/` extendiendo `BaseEntity`, repos en `repository/`. Hoy `ddl-auto=update` crea las tablas solo.
-- **E2-04 / E2-06 / E2-08** Emergencias, lotes y ofertas: `controller/` + `service/` + `dto/`.
-- **E2-10 a E2-12** Integración con Bonita: `client/BonitaClient` usando el bean `bonitaRestClient` y `BonitaProperties`.
+- **E2-04 / E2-06 / E2-08** Emergencias, lotes y ofertas: `controller/` + `service/` + `dto/` sobre las entidades y repos ya creados.
+- **E2-10 a E2-12** Integración con Bonita: `client/BonitaClient` usando el bean `bonitaRestClient` y `BonitaProperties`; `Emergencia.bonitaCaseId` queda listo para guardar el id de instancia.
