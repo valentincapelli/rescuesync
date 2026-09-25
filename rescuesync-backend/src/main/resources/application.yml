@@ -1,0 +1,49 @@
+spring:
+  application:
+    name: rescuesync-backend
+
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/rescuesync}
+    username: ${DB_USER:rescuesync}
+    password: ${DB_PASSWORD:rescuesync}
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      # update mientras armamos el modelo (E2-03). Pasar a "validate" + migraciones cuando se estabilice.
+      ddl-auto: ${JPA_DDL_AUTO:update}
+    properties:
+      hibernate:
+        format_sql: true
+        jdbc:
+          time_zone: UTC
+    show-sql: ${JPA_SHOW_SQL:false}
+
+  jackson:
+    time-zone: America/Argentina/Buenos_Aires
+
+server:
+  # Bonita Studio usa el 8080, por eso el backend va en el 8081
+  port: ${SERVER_PORT:8081}
+
+app:
+  version: '@project.version@'
+  cors:
+    # Vite (React) corre por defecto en el 5173
+    allowed-origins: ${CORS_ORIGINS:http://localhost:5173}
+
+bonita:
+  base-url: ${BONITA_URL:http://localhost:8080/bonita}
+  username: ${BONITA_USER:walter.bates}
+  password: ${BONITA_PASSWORD:bpm}
+  process-name: ${BONITA_PROCESS:RescueSync}
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
