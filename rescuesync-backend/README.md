@@ -59,12 +59,13 @@ src/main/java/com/grupo21/rescuesync/
 ├── model/        Entidades JPA y enums. Todas extienden BaseEntity (id + createdAt/updatedAt)
 ├── dto/          Records de entrada/salida (XxxRequest / XxxResponse) + ApiError
 ├── exception/    Excepciones propias + GlobalExceptionHandler
-└── client/       Clientes HTTP a sistemas externos (Bonita, Sistema Nacional)
+└── client/       Clientes HTTP a sistemas externos (por ahora, Bonita)
 ```
 
 ### Convenciones
 
 - El flujo es siempre **controller → service → repository / client**. Los controllers no acceden a repositorios.
+- **Regla de negocio:** el backend nunca se conecta directamente a la API del Sistema Nacional. Bonita actúa como intermediario ante ese sistema; el backend solo integra con Bonita.
 - Nunca se devuelven entidades JPA desde un controller: siempre DTOs (`record`).
 - Validaciones de entrada con Bean Validation (`@Valid`, `@NotBlank`, `@Positive`, …) en los DTOs de request.
 - Errores: lanzar `ResourceNotFoundException` (404), `BusinessException` (409) o `BonitaIntegrationException` (502). El `GlobalExceptionHandler` los convierte a JSON:
