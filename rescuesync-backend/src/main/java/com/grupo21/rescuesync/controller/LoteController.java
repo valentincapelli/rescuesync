@@ -11,7 +11,7 @@ import com.grupo21.rescuesync.dto.CrearLoteRequest;
 import com.grupo21.rescuesync.dto.LoteResponse;
 import com.grupo21.rescuesync.service.LoteService;
 
-import io.swagger.v3.oas.annotations.parameters.RequestBody;
+import org.springframework.web.bind.annotation.RequestBody;
 import jakarta.validation.Valid;
 
 import lombok.RequiredArgsConstructor;
