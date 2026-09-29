@@ -1,4 +1,4 @@
-package com.grupo21.rescuesync.dto;
+package com.grupo21.rescuesync.dto.ofertas;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;

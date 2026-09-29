@@ -1,7 +1,8 @@
 package com.grupo21.rescuesync.service;
 
-import com.grupo21.rescuesync.dto.CrearOfertaRequest;
-import com.grupo21.rescuesync.dto.OfertaResponse;
+import com.grupo21.rescuesync.dto.ofertas.CrearOfertaRequest;
+import com.grupo21.rescuesync.dto.ofertas.EditarOfertaRequest;
+import com.grupo21.rescuesync.dto.ofertas.OfertaResponse;
 import com.grupo21.rescuesync.exception.BusinessException;
 import com.grupo21.rescuesync.exception.ResourceNotFoundException;
 import com.grupo21.rescuesync.model.EstadoOferta;
@@ -48,6 +49,29 @@ public class OfertaService {
 
         return toResponse(guardada);
     }
+
+    public OfertaResponse editar(Long ofertaId, EditarOfertaRequest request) {
+
+        Oferta oferta = ofertaRepository.findById(ofertaId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Oferta con id " + ofertaId + " no encontrada"
+                        )
+                );
+
+        if (!oferta.getOngNombre().equalsIgnoreCase(request.ongNombre().trim())) {
+                throw new BusinessException(
+                        "La ONG indicada no tiene permiso para editar esta oferta"
+                );
+        }
+
+        oferta.setCantidadOfrecida(request.cantidadOfrecida());
+        oferta.setObservaciones(request.observaciones());
+
+        Oferta actualizada = ofertaRepository.save(oferta);
+
+        return toResponse(actualizada);
+        }
 
     private OfertaResponse toResponse(Oferta oferta) {
         return new OfertaResponse(

@@ -1,4 +1,4 @@
-package com.grupo21.rescuesync.dto;
+package com.grupo21.rescuesync.dto.ofertas;
 
 import com.grupo21.rescuesync.model.EstadoOferta;
 
