@@ -10,6 +10,9 @@ spring:
     open-in-view: false
     hibernate:
       ddl-auto: create-drop
+  jackson:
+    deserialization:
+      fail-on-numbers-for-enums: true
 
 app:
   version: test

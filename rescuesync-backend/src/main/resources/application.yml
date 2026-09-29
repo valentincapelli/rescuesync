@@ -21,6 +21,9 @@ spring:
 
   jackson:
     time-zone: America/Argentina/Buenos_Aires
+    deserialization:
+      # Los enums se reciben por nombre; un número no debe interpretarse como su posición.
+      fail-on-numbers-for-enums: true
 
 server:
   # Bonita Studio usa el 8080, por eso el backend va en el 8081

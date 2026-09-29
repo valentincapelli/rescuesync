@@ -100,6 +100,39 @@ docker exec -it rescuesync-postgres psql -U rescuesync -d rescuesync -c "\dt"
 
 Cuando el modelo se estabilice conviene pasar a `ddl-auto=validate` + migraciones (Flyway), pero por ahora no hace falta para el alcance de la Entrega 2.
 
+## Alta de emergencias (E2-04)
+
+`POST /api/emergencias` recibe JSON y devuelve `201 Created`, un `EmergenciaResponse`
+y el header `Location` con la ruta de consulta de la emergencia creada.
+El listado y la consulta por id también devuelven JSON.
+
+```bash
+curl -i -X POST http://localhost:8081/api/emergencias \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "tipoDesastre": "INUNDACION",
+    "nivelGravedad": "ALTO",
+    "zonaAfectada": "Tolosa",
+    "descripcion": "Calles anegadas y familias que necesitan asistencia.",
+    "municipio": "La Plata"
+  }'
+```
+
+Los cinco campos son obligatorios. `zonaAfectada` admite hasta 200 caracteres y
+`municipio`, hasta 150. Los enums se envían por nombre (`TipoDesastre` y `NivelGravedad`),
+nunca por índice numérico; esta validación se aplica también al resto de los endpoints.
+El backend asigna el id, las fechas de auditoría y el estado inicial `REGISTRADA`.
+`bonitaCaseId` queda en `null` hasta implementar la integración con Bonita.
+
+Los errores mantienen el formato `ApiError`: `400` para datos inválidos (con `fieldErrors`
+cuando falla Bean Validation), `404` para una emergencia inexistente, `415` para un
+`Content-Type` no soportado y `406` cuando `Accept` no admite JSON.
+Los formatos incompatibles se rechazan antes de guardar la emergencia.
+
+**Pruebas:** `mvn test` incluye alta, lectura directa de datos confirmados en H2, consulta,
+listado, auditoría, validaciones, protección de campos asignados por el servidor,
+errores HTTP y Swagger. También verifica que una emergencia nueva permita crear lotes.
+
 ## Próximas tareas que se apoyan en esta base
 
 - **E2-04** ✅ Alta de emergencias: `POST /api/emergencias` (+ `GET /api/emergencias`, `GET /api/emergencias/{id}`) en `EmergenciaController` / `EmergenciaService`, usados por el formulario del frontend.
