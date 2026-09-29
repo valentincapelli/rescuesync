@@ -13,4 +13,6 @@ public interface OfertaRepository extends JpaRepository<Oferta, Long> {
     List<Oferta> findByLoteIdAndEstado(Long loteId, EstadoOferta estado);
 
     List<Oferta> findByOngNombreIgnoreCase(String ongNombre);
+
+    List<Oferta> findByOngNombreIgnoreCaseAndLoteId(String ongNombre, Long loteId);
 }

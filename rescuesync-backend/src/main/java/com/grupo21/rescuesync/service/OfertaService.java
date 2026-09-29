@@ -2,6 +2,7 @@ package com.grupo21.rescuesync.service;
 
 import com.grupo21.rescuesync.dto.CrearOfertaRequest;
 import com.grupo21.rescuesync.dto.OfertaResponse;
+import com.grupo21.rescuesync.exception.BusinessException;
 import com.grupo21.rescuesync.exception.ResourceNotFoundException;
 import com.grupo21.rescuesync.model.EstadoOferta;
 import com.grupo21.rescuesync.model.Lote;
@@ -27,7 +28,14 @@ public class OfertaService {
                                 "Lote con id " + loteId + " no encontrado"
                         )
                 );
-
+        
+        Oferta ofertaExistente = ofertaRepository.findByOngNombreIgnoreCaseAndLoteId(request.ongNombre(), loteId)
+                .stream()
+                .findFirst()
+                .orElse(null);
+        if (ofertaExistente != null) {
+            throw new BusinessException("Ya existe una oferta de esta ONG para este lote");
+        }
         Oferta oferta = new Oferta();
 
         oferta.setLote(lote);
