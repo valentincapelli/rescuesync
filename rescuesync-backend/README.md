@@ -102,5 +102,7 @@ Cuando el modelo se estabilice conviene pasar a `ddl-auto=validate` + migracione
 
 ## Próximas tareas que se apoyan en esta base
 
-- **E2-04 / E2-06 / E2-08** Emergencias, lotes y ofertas: `controller/` + `service/` + `dto/` sobre las entidades y repos ya creados.
+- **E2-04** ✅ Alta de emergencias: `POST /api/emergencias` (+ `GET /api/emergencias`, `GET /api/emergencias/{id}`) en `EmergenciaController` / `EmergenciaService`, usados por el formulario del frontend.
+- **E2-06** ✅ Alta de lotes: `POST /api/emergencias/{emergenciaId}/lotes` en `LoteController` / `LoteService`.
+- **E2-08** Ofertas: falta `controller/` + `service/` + `dto/` sobre `Oferta` y `OfertaRepository` (ya existen).
 - **E2-10 a E2-12** Integración con Bonita: `client/BonitaClient` usando el bean `bonitaRestClient` y `BonitaProperties`; `Emergencia.bonitaCaseId` queda listo para guardar el id de instancia.
