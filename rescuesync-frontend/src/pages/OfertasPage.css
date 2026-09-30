@@ -1,0 +1,22 @@
+.oferta-form {
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 1rem 1.1rem;
+}
+
+.oferta-form h3,
+.oferta-form p {
+  margin: 0;
+}
+
+.ofertas-page .form-field select {
+  width: 100%;
+  min-width: 0;
+}
+
+@media (max-width: 600px) {
+  .ofertas-page .emergencia-picker {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

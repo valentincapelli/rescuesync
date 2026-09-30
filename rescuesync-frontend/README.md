@@ -28,6 +28,7 @@ App web de RescueSync (DSSD 2026 – Grupo 21).
    - **Municipio · Registrar emergencia**: formulario de alta de emergencia (E2-05).
    - **Centro Coordinador · Lotes**: desglose de una emergencia en lotes y
      publicación de la convocatoria (E2-07, ver abajo).
+   - **ONG · Ofertas**: carga básica de ofertas sobre lotes publicados (E2-09).
 
 **Build de producción:** `npm run build` (corre `tsc -b` y falla si hay errores
 de tipos). `npm run preview` sirve ese build localmente.
@@ -57,6 +58,33 @@ Las validaciones del formulario replican las de `CrearLoteRequest` (descripción
 marca en el campo; si responde 409 (ej. convocatoria ya publicada), se muestra
 arriba como mensaje.
 
+## Formulario de ofertas para ONGs (E2-09)
+
+Implementa la carga básica de ofertas de la Entrega 2 utilizando la API existente.
+
+1. Se elige una convocatoria entre las emergencias en `CONVOCATORIA_PUBLICADA`
+   (`GET /api/emergencias`). **Actualizar** vuelve a consultar las convocatorias y
+   los lotes de la emergencia seleccionada.
+2. Se elige uno de sus lotes en estado `PUBLICADO`
+   (`GET /api/emergencias/{id}/lotes`). Se muestra el recurso, su descripción,
+   la cantidad requerida y la unidad de medida.
+3. Se completa el nombre de la ONG, la cantidad ofrecida (en la unidad del lote)
+   y, opcionalmente, observaciones. La cantidad puede cubrir parte de lo solicitado.
+4. **Registrar oferta** envía `POST /api/lotes/{loteId}/ofertas` y muestra el id,
+   la ONG, la cantidad y el estado devuelto por el backend (`PENDIENTE` al crear).
+   Durante el envío se bloquean los campos, selectores y el botón de actualización.
+
+Las validaciones reflejan `CrearOfertaRequest`: nombre obligatorio de hasta 150
+caracteres y cantidad entera positiva dentro del rango de `Integer`. Los errores
+400 con `fieldErrors` se muestran junto al campo; los conflictos 409 (una oferta
+duplicada de la misma ONG o un lote que ya no admite ofertas) se muestran como
+mensaje, conservando los datos para corregirlos. Al cambiar de convocatoria o lote
+se limpia el formulario anterior y se ignoran respuestas de consultas anteriores.
+
+Este formulario cubre el alta básica: la edición con trazabilidad, los consorcios
+y el control temporal mediante Bonita corresponden a etapas posteriores. La ONG
+sigue identificándose por nombre, como establece el backend actual.
+
 ## Configuración
 
 La URL del backend se lee de `VITE_API_URL` (ver `.env.example`). Por defecto
@@ -71,18 +99,22 @@ src/
 ├── App.tsx                    Layout raíz: BackendStatus + pestañas por rol
 ├── components/
 │   ├── BackendStatus.tsx      Chequeo de conexión con el backend (GET /api/info)
-│   └── LoteForm.tsx           Formulario de alta/edición de un lote (E2-07)
+│   ├── LoteForm.tsx           Formulario de alta/edición de un lote (E2-07)
+│   └── OfertaForm.tsx         Formulario de carga de una oferta de ONG (E2-09)
 ├── pages/
 │   ├── AltaEmergenciaPage.tsx Formulario de alta de emergencia (E2-05)
-│   └── LotesPage.tsx          Desglose en lotes + publicar convocatoria (E2-07)
+│   ├── LotesPage.tsx          Desglose en lotes + publicar convocatoria (E2-07)
+│   └── OfertasPage.tsx        Selección de convocatoria/lote + alta de oferta (E2-09)
 ├── types/
 │   ├── emergencia.ts          Enums, labels y tipos de emergencia (model/ y dto/)
-│   └── lote.ts                TipoRecurso, EstadoLote, labels, unidades sugeridas, Lote/LoteRequest
+│   ├── lote.ts                TipoRecurso, EstadoLote, labels, unidades sugeridas, Lote/LoteRequest
+│   └── oferta.ts              EstadoOferta, labels, Oferta/CrearOfertaRequest
 ├── api/
 │   ├── client.ts               fetch wrapper genérico (apiGet, apiPost, apiPut, apiDelete, ApiError)
 │   ├── info.ts                 GET /api/info
 │   ├── emergencias.ts          POST/GET /api/emergencias, POST /{id}/convocatoria
-│   └── lotes.ts                GET/POST/PUT/DELETE /api/emergencias/{id}/lotes
+│   ├── lotes.ts                GET/POST/PUT/DELETE /api/emergencias/{id}/lotes
+│   └── ofertas.ts              POST /api/lotes/{id}/ofertas
 └── vite-env.d.ts              Tipado de las env vars (VITE_API_URL)
 ```
 
@@ -95,7 +127,7 @@ src/
   deben copiar EXACTAMENTE los valores de `rescuesync-backend/.../model/*.java`
   (son los strings que viajan en el JSON).
 - Una página por pantalla en `src/pages/` (o `src/features/<recurso>/` si conviene
-  agrupar por dominio), y una pestaña en `App.tsx`. Próxima: E2-09 (ofertas).
+  agrupar por dominio), y una pestaña en `App.tsx`.
 - El manejo de errores del formulario usa `ApiError.fieldErrors` cuando el backend
   devuelve 400 de validación (ver `GlobalExceptionHandler`), para marcar el campo
   puntual en rojo en vez de un error genérico.
@@ -104,3 +136,8 @@ src/
 
 Con los cambios de E2-07, `npm install` + `tsc -b` + `vite build` corren sin errores,
 y la pantalla de lotes se probó de punta a punta contra un backend simulado.
+
+Para E2-09 se verificó `npm run build` y el flujo de ofertas en un DOM simulado
+con React StrictMode y una API simulada: selección de lotes publicados, alta parcial,
+validaciones, respuestas 400/409, fallos de red, actualización y cambios rápidos de
+convocatoria. Estas pruebas no verifican persistencia contra una base de datos real.
