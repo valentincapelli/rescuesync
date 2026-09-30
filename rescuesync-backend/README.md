@@ -133,9 +133,35 @@ Los formatos incompatibles se rechazan antes de guardar la emergencia.
 listado, auditoría, validaciones, protección de campos asignados por el servidor,
 errores HTTP y Swagger. También verifica que una emergencia nueva permita crear lotes.
 
+## Integración con Bonita (E2-10)
+
+`client/BonitaClient` se loguea contra el engine de Bonita (`POST /loginservice`)
+usando `bonita.username`/`bonita.password` (ver `.env.example`, por defecto el
+usuario demo `walter.bates`/`bpm`), y cachea la sesión (cookie `JSESSIONID` +
+token anti-CSRF `X-Bonita-API-Token`). Si una llamada devuelve `401` porque la
+sesión venció, se reautentica una vez sola y reintenta — no hay que loguearse
+en cada request.
+
+Para probar que el backend puede hablar con Bonita (con Bonita Portal/Studio
+corriendo en `:8080` y el proceso `RescueSync` desplegado y habilitado):
+
+```bash
+curl -i http://localhost:8081/api/bonita/estado
+```
+
+- `200` con `{"procesoId": "...", "procesoNombre": "RescueSync"}` si encontró el
+  proceso habilitado.
+- `502` (`ApiError`) si no pudo autenticarse, o si el proceso no existe/no está
+  habilitado — el `message` explica cuál de las dos cosas pasó.
+
+Esto todavía **no** inicia instancias del proceso ni setea variables: eso es
+E2-11 (usar el `procesoId` resuelto acá para `POST /API/bpm/process/{id}/instantiation`)
+y E2-12 (variables iniciales en el mismo body de esa llamada).
+
 ## Próximas tareas que se apoyan en esta base
 
 - **E2-04** ✅ Alta de emergencias: `POST /api/emergencias` (+ `GET /api/emergencias`, `GET /api/emergencias/{id}`) en `EmergenciaController` / `EmergenciaService`, usados por el formulario del frontend.
 - **E2-06** ✅ Alta de lotes: `POST /api/emergencias/{emergenciaId}/lotes` en `LoteController` / `LoteService`.
 - **E2-08** Ofertas: falta `controller/` + `service/` + `dto/` sobre `Oferta` y `OfertaRepository` (ya existen).
-- **E2-10 a E2-12** Integración con Bonita: `client/BonitaClient` usando el bean `bonitaRestClient` y `BonitaProperties`; `Emergencia.bonitaCaseId` queda listo para guardar el id de instancia.
+- **E2-10** ✅ Autenticación e integración inicial con Bonita: ver sección arriba (`GET /api/bonita/estado`).
+- **E2-11 / E2-12** Iniciar instancia del proceso al crear una emergencia + setear variables iniciales, usando `BonitaClient.buscarIdProceso` y guardando el resultado en `Emergencia.bonitaCaseId`.
