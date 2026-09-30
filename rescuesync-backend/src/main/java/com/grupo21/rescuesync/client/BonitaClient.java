@@ -18,6 +18,7 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
 
@@ -28,9 +29,9 @@ import java.util.function.Function;
  * JSESSIONID + token anti-CSRF X-Bonita-API-Token), reintentando el login una
  * sola vez si una llamada devuelve 401 porque la sesión expiró.
  *
- * Alcance de esta tarea (E2-10): autenticarse y poder resolver el id del
- * proceso configurado en BonitaProperties.processName. Iniciar instancias y
- * setear variables es tarea de E2-11/E2-12.
+ * También expone instanciarProceso (E2-11/E2-12): arranca una instancia del
+ * proceso pasando las entradas del Contrato de instanciación. Si el proceso
+ * no tiene contrato definido en Studio, mandar un Map vacío.
  */
 @Slf4j
 @Component
@@ -61,7 +62,7 @@ public class BonitaClient {
     }
 
     /** Busca el id de un proceso habilitado por nombre. Vacío si no existe. */
-    Optional<String> buscarIdProceso(String nombreProceso) {
+    public Optional<String> buscarIdProceso(String nombreProceso) {
         return withSession(sesion -> {
             List<BonitaProcessSummary> procesos = bonitaRestClient.get()
                     .uri(uriBuilder -> uriBuilder
@@ -77,6 +78,43 @@ public class BonitaClient {
                     ? Optional.<String>empty()
                     : procesos.stream().findFirst().map(BonitaProcessSummary::id);
         });
+    }
+
+    /**
+     * Instancia el proceso (E2-11) mandando `entradasContrato` como body del POST
+     * de instanciación (E2-12). Esas claves tienen que matchear EXACTO los inputs
+     * definidos en el Contrato de instanciación del proceso en Bonita Studio — si
+     * el proceso no tiene contrato (o no tiene inputs), mandar un Map vacío.
+     *
+     * Devuelve el caseId de la instancia creada.
+     */
+    public String instanciarProceso(String idProceso, Map<String, Object> entradasContrato) {
+        try {
+            return withSession(sesion -> {
+                Map<String, Object> respuesta = bonitaRestClient.post()
+                        .uri("/API/bpm/process/{id}/instantiation", idProceso)
+                        .headers(headers -> agregarHeadersDeSesion(headers, sesion))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body(entradasContrato)
+                        .retrieve()
+                        .body(new ParameterizedTypeReference<Map<String, Object>>() {});
+
+                Object caseId = respuesta == null ? null : respuesta.getOrDefault("caseId", respuesta.get("id"));
+                if (caseId == null) {
+                    throw new BonitaIntegrationException(
+                            "Bonita instanció el proceso pero la respuesta no trae un id de caso reconocible: "
+                                    + respuesta, null);
+                }
+                return String.valueOf(caseId);
+            });
+        } catch (RestClientException ex) {
+            throw new BonitaIntegrationException(
+                    "No se pudo instanciar el proceso '" + idProceso + "' en Bonita"
+                            + (entradasContrato.isEmpty()
+                                    ? ""
+                                    : " (revisar si el contrato de instanciación espera otras entradas)"),
+                    ex);
+        }
     }
 
     /**

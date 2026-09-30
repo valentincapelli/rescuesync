@@ -154,9 +154,39 @@ curl -i http://localhost:8081/api/bonita/estado
 - `502` (`ApiError`) si no pudo autenticarse, o si el proceso no existe/no está
   habilitado — el `message` explica cuál de las dos cosas pasó.
 
-Esto todavía **no** inicia instancias del proceso ni setea variables: eso es
-E2-11 (usar el `procesoId` resuelto acá para `POST /API/bpm/process/{id}/instantiation`)
-y E2-12 (variables iniciales en el mismo body de esa llamada).
+### Instanciar el proceso al crear una emergencia (E2-11 / E2-12)
+
+`EmergenciaService.crear()` guarda la emergencia en Postgres y **después**
+intenta instanciar el proceso `RescueSync` en Bonita:
+
+1. Resuelve el `procesoId` con `BonitaClient.buscarIdProceso(...)` (lo mismo que usa `/api/bonita/estado`).
+2. Llama a `BonitaClient.instanciarProceso(procesoId, entradas)` — hoy `entradas` va vacío (`Map.of()`).
+3. Si Bonita devuelve un `caseId`, se guarda en `Emergencia.bonitaCaseId`.
+
+**Es "best effort" a propósito**: si Bonita no está corriendo o falla la instanciación,
+la emergencia **igual queda guardada** (`bonitaCaseId` en `null`) y el problema se
+loguea (`WARN`) en vez de devolver un error al usuario. La idea es que dar de alta
+una emergencia no dependa de que Bonita esté arriba en ese momento.
+
+**Sobre las "variables iniciales" (E2-12):** la API de Bonita no deja setear
+variables de proceso libremente al instanciar — el body del POST tiene que
+matchear los *inputs* del **Contrato de instanciación** que se define en el Pool
+en Bonita Studio (pestaña "Contrat"/"Contrato"), con un mapeo Contrato → Variable
+(scripts de inicialización). Mientras el proceso no tenga ese contrato definido,
+`entradas` tiene que ir vacío (como está ahora) — mandar cualquier clave sin que
+exista el contrato correspondiente devuelve `400` (violación de contrato) y el
+`502` que arma `BonitaIntegrationException` explica el problema.
+Para completar esto de verdad falta: (a) definir el contrato en Studio con los
+inputs que necesiten (ej. `tipoDesastre`, `zonaAfectada`, `municipio`), (b)
+mapearlos a variables de proceso, y (c) armar el `Map.of(...)` correspondiente acá.
+
+**Ojo con los tests:** `EmergenciaIntegrationTests` asume `bonitaCaseId == null`
+al crear una emergencia. Eso sigue siendo así mientras Bonita no esté corriendo
+al ejecutar `mvn test` — pero si corren los tests con Bonita Studio levantado en
+`:8080` y el proceso habilitado, esa instanciación *va a* tener éxito y esas
+aserciones se van a romper. Es un efecto secundario esperado del diseño actual,
+no un bug — si molesta, se soluciona mockeando `BonitaClient` en el test (o con un
+profile de test que apunte `BONITA_URL` a una URL inexistente).
 
 ## Próximas tareas que se apoyan en esta base
 
@@ -164,4 +194,5 @@ y E2-12 (variables iniciales en el mismo body de esa llamada).
 - **E2-06** ✅ Alta de lotes: `POST /api/emergencias/{emergenciaId}/lotes` en `LoteController` / `LoteService`.
 - **E2-08** Ofertas: falta `controller/` + `service/` + `dto/` sobre `Oferta` y `OfertaRepository` (ya existen).
 - **E2-10** ✅ Autenticación e integración inicial con Bonita: ver sección arriba (`GET /api/bonita/estado`).
-- **E2-11 / E2-12** Iniciar instancia del proceso al crear una emergencia + setear variables iniciales, usando `BonitaClient.buscarIdProceso` y guardando el resultado en `Emergencia.bonitaCaseId`.
+- **E2-11** ✅ Instanciar el proceso al crear una emergencia: ver sección arriba.
+- **E2-12** ⚠️ Parcial: la llamada ya manda el body de instanciación, pero sin entradas — falta definir el Contrato en Bonita Studio para mandar variables iniciales reales (ver sección arriba).

@@ -1,7 +1,10 @@
 package com.grupo21.rescuesync.service;
 
+import com.grupo21.rescuesync.client.BonitaClient;
+import com.grupo21.rescuesync.config.BonitaProperties;
 import com.grupo21.rescuesync.dto.CrearEmergenciaRequest;
 import com.grupo21.rescuesync.dto.EmergenciaResponse;
+import com.grupo21.rescuesync.exception.BonitaIntegrationException;
 import com.grupo21.rescuesync.exception.BusinessException;
 import com.grupo21.rescuesync.exception.ResourceNotFoundException;
 import com.grupo21.rescuesync.model.Emergencia;
@@ -11,15 +14,21 @@ import com.grupo21.rescuesync.model.Lote;
 import com.grupo21.rescuesync.repository.EmergenciaRepository;
 import com.grupo21.rescuesync.repository.LoteRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Map;
+
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class EmergenciaService {
 
     private final EmergenciaRepository emergenciaRepository;
     private final LoteRepository loteRepository;
+    private final BonitaClient bonitaClient;
+    private final BonitaProperties bonitaProperties;
 
     public EmergenciaResponse crear(CrearEmergenciaRequest request) {
         Emergencia emergencia = new Emergencia();
@@ -33,7 +42,40 @@ public class EmergenciaService {
 
         Emergencia guardada = emergenciaRepository.save(emergencia);
 
+        iniciarProcesoBonita(guardada);
+
         return toResponse(guardada);
+    }
+
+    /**
+     * Instancia el proceso RescueSync en Bonita para esta emergencia (E2-11/E2-12).
+     * Es "best effort": la emergencia ya quedó guardada en Postgres antes de esto,
+     * así que si Bonita no está disponible o falla la instanciación, no perdemos
+     * el alta — queda con bonitaCaseId en null y el problema se loguea, en vez de
+     * romper la respuesta al usuario por un problema del lado de Bonita.
+     */
+    private void iniciarProcesoBonita(Emergencia emergencia) {
+        try {
+            String idProceso = bonitaClient.buscarIdProceso(bonitaProperties.processName())
+                    .orElseThrow(() -> new BonitaIntegrationException(
+                            "No hay un proceso habilitado llamado '" + bonitaProperties.processName()
+                                    + "' en Bonita", null));
+
+            // Sin entradas por ahora: si el proceso tiene un Contrato de instanciación
+            // con inputs definidos en Studio, hay que mandarlos acá como Map.of("input", valor).
+            String caseId = bonitaClient.instanciarProceso(idProceso, Map.of());
+
+            emergencia.setBonitaCaseId(Long.valueOf(caseId));
+            emergenciaRepository.save(emergencia);
+
+            log.info("Emergencia {}: instancia de Bonita creada, caseId={}", emergencia.getId(), caseId);
+        } catch (BonitaIntegrationException ex) {
+            log.warn("Emergencia {}: no se pudo instanciar el proceso en Bonita ({})",
+                    emergencia.getId(), ex.getMessage());
+        } catch (NumberFormatException ex) {
+            log.warn("Emergencia {}: Bonita devolvió un caseId no numérico ({})",
+                    emergencia.getId(), ex.getMessage());
+        }
     }
 
     @Transactional(readOnly = true)
