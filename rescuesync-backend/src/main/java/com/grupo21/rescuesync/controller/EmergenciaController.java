@@ -45,6 +45,16 @@ public class EmergenciaController {
         return emergenciaService.listar();
     }
 
+    @Operation(summary = "Publicar la convocatoria de la emergencia",
+            description = "Pasa la emergencia a CONVOCATORIA_PUBLICADA y todos sus lotes a PUBLICADO. "
+                    + "409 si no tiene lotes o si ya estaba publicada.")
+    @ApiResponse(responseCode = "200", description = "Convocatoria publicada")
+    @ApiResponse(responseCode = "409", description = "Sin lotes o convocatoria ya publicada")
+    @PostMapping("/{id}/convocatoria")
+    public EmergenciaResponse publicarConvocatoria(@PathVariable Long id) {
+        return emergenciaService.publicarConvocatoria(id);
+    }
+
     @Operation(summary = "Obtener una emergencia por id")
     @GetMapping("/{id}")
     public EmergenciaResponse obtener(@PathVariable Long id) {

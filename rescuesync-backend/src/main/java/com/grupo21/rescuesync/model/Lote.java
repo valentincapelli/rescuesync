@@ -51,7 +51,7 @@ public class Lote extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "estado", nullable = false, length = 30)
-    private EstadoLote estado = EstadoLote.PUBLICADO;
+    private EstadoLote estado = EstadoLote.BORRADOR;
 
     @OneToMany(mappedBy = "lote", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @OrderBy("id ASC")

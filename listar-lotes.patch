@@ -1,0 +1,374 @@
+From e86b8163782b9c64d50247ee271832537a9fa0d1 Mon Sep 17 00:00:00 2001
+From: Valentin Capelli <valentin.capelli@hotmail.com>
+Date: Wed, 30 Sep 2026 13:23:16 +0000
+Subject: [PATCH] =?UTF-8?q?GET=20de=20lotes=20por=20emergencia=20+=20plan?=
+ =?UTF-8?q?=20de=20publicaci=C3=B3n=20de=20convocatoria?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Bb4XTUP6jCsemGs8KF4ZPQ
+---
+ plan.md                                       | 112 ++++++++++++++++++
+ rescuesync-backend/README.md                  |   4 +-
+ .../rescuesync/controller/LoteController.java |  10 ++
+ .../rescuesync/repository/LoteRepository.java |   2 +
+ .../rescuesync/service/LoteService.java       |  16 +++
+ .../rescuesync/LoteIntegrationTests.java      | 112 ++++++++++++++++++
+ rescuesync-frontend/tsconfig.app.tsbuildinfo  |   1 +
+ rescuesync-frontend/tsconfig.node.tsbuildinfo |   1 +
+ 8 files changed, 256 insertions(+), 2 deletions(-)
+ create mode 100644 plan.md
+ create mode 100644 rescuesync-backend/src/test/java/com/grupo21/rescuesync/LoteIntegrationTests.java
+ create mode 100644 rescuesync-frontend/tsconfig.app.tsbuildinfo
+ create mode 100644 rescuesync-frontend/tsconfig.node.tsbuildinfo
+
+diff --git a/plan.md b/plan.md
+new file mode 100644
+index 0000000..23fb16b
+--- /dev/null
++++ b/plan.md
+@@ -0,0 +1,112 @@
++# Plan – Generación de lotes y publicación de convocatoria (E2-06 / E2-07)
++
++> Grupo 21 · RescueSync · Entrega 2 · actualizado 30/09/2026
++
++## 1. Qué pide la consigna
++
++> "Un Centro Coordinador Regional recibe la emergencia, revisa la información y la desglosa en
++> 'Lotes de Necesidades' (ej: 5 Paramédicos, 1000 raciones de alimento). Una vez cuantificadas,
++> se publica oficialmente la convocatoria a toda la red."
++
++Esto separa tres momentos distintos, que también aparecen en nuestro BPMN
++(`Registrar emergencia` → `Revisar y desglosar emergencia` → `Publicar convocatoria`):
++
++1. **Recibir / revisar**: el CCR toma una emergencia registrada por el Municipio.
++2. **Desglosar**: el CCR carga los lotes (tipo de recurso + cantidad + unidad). Mientras
++   desglosa, puede corregir o quitar lotes.
++3. **Publicar**: un acto explícito que abre la convocatoria. Recién ahí las ONGs pueden ofertar.
++
++## 2. Estado actual del código (rama `development`, commit `d3c7de3`)
++
++| Qué | Estado |
++|---|---|
++| `POST /api/emergencias` → emergencia en `REGISTRADA` | ✅ |
++| `POST /api/emergencias/{id}/lotes` → lote creado directamente en `PUBLICADO` | ✅ (ver brecha 1) |
++| `GET /api/emergencias/{id}/lotes` | ✅ **nuevo** (rama `feature/listar-lotes`) |
++| `POST/PUT /api/lotes/{loteId}/ofertas` | ✅ |
++| Transición de la emergencia a `EN_REVISION` / `CONVOCATORIA_PUBLICADA` | ❌ nunca ocurre |
++| Formulario de lotes en el front (E2-07) | ❌ |
++
++### Brechas respecto de la consigna
++
++1. **No hay "publicación".** Hoy un lote queda `PUBLICADO` en cuanto se crea, así que una ONG
++   puede ofertar sobre un lote que el CCR todavía está armando.
++2. **La emergencia no cambia de estado.** Queda en `REGISTRADA` para siempre; los estados
++   `EN_REVISION` y `CONVOCATORIA_PUBLICADA` existen en el enum pero nadie los usa.
++3. **No se valida el estado al crear lotes ni ofertas.** Se pueden agregar lotes a una emergencia
++   con la convocatoria ya publicada, y ofertas a lotes de una emergencia sin publicar.
++4. **No se pueden corregir lotes** (no hay `PUT`/`DELETE`) durante el desglose.
++
++## 3. Decisiones ya tomadas
++
++| # | Decisión | Dónde |
++|---|---|---|
++| D1 | Stack: Java 21 + Spring Boot 3.5 + Maven, React 18 + TS + Vite, PostgreSQL 16 en Docker | E2-01/E2-02 |
++| D2 | Backend organizado por capas; controller → service → repository; siempre DTOs `record` | E2-02 |
++| D3 | El backend **nunca** llama al Sistema Nacional; solo integra con Bonita | README backend |
++| D4 | Entidades `Emergencia` 1—N `Lote` 1—N `Oferta`; enums guardados como `VARCHAR` y enviados por nombre | E2-03 |
++| D5 | Estados de emergencia: `REGISTRADA → EN_REVISION → CONVOCATORIA_PUBLICADA → …` | `EstadoEmergencia` |
++| D6 | Un lote = un tipo de recurso con cantidad y unidad (ej. 5 "personas", 1000 "raciones") | `Lote` |
++| D7 | Rutas anidadas: lotes bajo `/emergencias/{id}/lotes`, ofertas bajo `/lotes/{id}/ofertas` | E2-06/E2-08 |
++| D8 | Una ONG carga **una oferta por lote** (409 si repite); la ONG se identifica por nombre hasta E2-10 | E2-08 |
++| D9 | Las ofertas parciales/consorcios y versiones de ofertas se resuelven en app + BD, no en Bonita | Diagnóstico BPMN |
++| D10 | `GET /api/emergencias/{id}/lotes`: lista ordenada por id, `[]` si no hay lotes, 404 si la emergencia no existe | este plan |
++
++## 4. Propuesta de flujo
++
++```
++Municipio                CCR                                            ONGs
++─────────                ───                                            ────
++POST /emergencias  ──►  REGISTRADA
++                         │  (1) tomar para revisión
++                         ▼
++                        EN_REVISION ── POST/PUT/DELETE lotes (BORRADOR)
++                         │  (2) POST /emergencias/{id}/convocatoria
++                         ▼
++                        CONVOCATORIA_PUBLICADA ── lotes pasan a PUBLICADO ──►  POST /lotes/{id}/ofertas
++```
++
++Reglas propuestas:
++
++- Se pueden **crear/editar/borrar lotes** solo si la emergencia está en `REGISTRADA` o `EN_REVISION` (409 si no).
++- **Publicar** exige al menos un lote; pasa la emergencia a `CONVOCATORIA_PUBLICADA` y todos sus
++  lotes a `PUBLICADO` en una sola transacción. Publicar dos veces → 409.
++- Se pueden **cargar/editar ofertas** solo sobre lotes `PUBLICADO` (409 si no).
++
++## 5. Decisiones pendientes (a resolver en grupo)
++
++| # | Pregunta | Opciones | Recomendación |
++|---|---|---|---|
++| P1 | ¿En qué estado nace un lote? | a) agregar `BORRADOR` a `EstadoLote` · b) dejar `PUBLICADO` y controlar solo con el estado de la emergencia | **a**: el estado del lote refleja la realidad y la regla de ofertas queda simple ("solo lotes `PUBLICADO`") |
++| P2 | ¿Cómo pasa la emergencia a `EN_REVISION`? | a) endpoint explícito `POST /emergencias/{id}/revision` · b) automático al cargar el primer lote | **b** para esta entrega (menos pantallas); **a** si se quiere mapear 1:1 con la tarea humana de Bonita |
++| P3 | ¿Cómo se modela "publicar"? | a) `POST /emergencias/{id}/convocatoria` · b) `PATCH /emergencias/{id}` con `estado` | **a**: es una acción de negocio con validaciones, no un update genérico |
++| P4 | ¿Se permite editar/borrar lotes antes de publicar? | sí (`PUT`/`DELETE`) · no | **sí**, la consigna habla de "revisar" y "cuantificar" antes de publicar |
++| P5 | ¿Se puede agregar un lote después de publicar? | no · sí, con nueva publicación | **no** en E2; la reformulación (`REFORMULADO`) corresponde a "Resolver cobertura incompleta", etapa posterior |
++| P6 | ¿Qué pasa con Bonita al publicar? | a) iniciar el caso al registrar la emergencia y completar la tarea "Publicar convocatoria" al publicar · b) iniciar el caso recién al publicar | Definir junto con E2-10..E2-12; **a** respeta el BPMN (el caso arranca en "Registrar emergencia") |
++| P7 | ¿Duración de la convocatoria (Timer)? | fija en Bonita · la carga el CCR al publicar y se envía como variable | Si la carga el CCR, agregar `fechaCierreConvocatoria` a `Emergencia` y enviarla en E2-12 |
++| P8 | ¿Quién es "el CCR" en la UI sin login? | pantalla separada · misma app con secciones por rol | Secciones por rol hasta E2-10 |
++| P9 | ¿Se valida la unidad de medida? | texto libre (actual) · lista fija por `TipoRecurso` | Texto libre por ahora; lista fija si sobra tiempo |
++
++## 6. Plan de trabajo
++
++| Paso | Tarea | Grooming | Depende de |
++|---|---|---|---|
++| 1 | `GET /api/emergencias/{id}/lotes` + tests | E2-06 | ✅ hecho |
++| 2 | Cerrar P1–P5 en grupo | — | — |
++| 3 | Back: `BORRADOR` en `EstadoLote`; lote nace en `BORRADOR`; validar estado de la emergencia al crear lotes; pasar a `EN_REVISION` | E2-06 | P1, P2 |
++| 4 | Back: `PUT`/`DELETE /api/emergencias/{id}/lotes/{loteId}` | E2-06 | P4 |
++| 5 | Back: `POST /api/emergencias/{id}/convocatoria` (valida ≥1 lote, cambia estados) + tests | E2-06 | P3 |
++| 6 | Back: `OfertaService` rechaza lotes no `PUBLICADO`; verificar que `ofertaId` pertenezca a `loteId` en el `PUT` | E2-08 | paso 3 |
++| 7 | Back: `GET /api/lotes?estado=PUBLICADO` (o por emergencia) para que el formulario de ONGs elija lote | E2-09 | paso 5 |
++| 8 | Front: `types/lote.ts`, `api/lotes.ts` | E2-07 | pasos 1, 3–5 |
++| 9 | Front: página "Desglosar emergencia" — elegir emergencia (`GET /emergencias`), tabla de lotes, formulario de alta, editar/borrar, botón **Publicar convocatoria** con confirmación | E2-07 | paso 8 |
++| 10 | Conectar "Publicar" con Bonita (completar tarea / setear variables) | E2-11/E2-12 | P6, P7 |
++| 11 | Actualizar README backend/frontend y la duración real en el grooming | E2-14 | — |
++
++## 7. Cambios de este commit (`feature/listar-lotes`)
++
++- `LoteRepository.findByEmergenciaIdOrderByIdAsc`
++- `LoteService.listarPorEmergencia` (404 si la emergencia no existe, lectura `readOnly`)
++- `GET /api/emergencias/{emergenciaId}/lotes` en `LoteController`
++- `LoteIntegrationTests`: lista vacía, orden de creación, no mezcla emergencias, 404
++- ⚠️ No se pudo correr `mvn test` en la nube (Maven Central bloqueado): **correrlo en local antes de mergear**.
+diff --git a/rescuesync-backend/README.md b/rescuesync-backend/README.md
+index 9080b54..023266f 100644
+--- a/rescuesync-backend/README.md
++++ b/rescuesync-backend/README.md
+@@ -136,6 +136,6 @@ errores HTTP y Swagger. También verifica que una emergencia nueva permita crear
+ ## Próximas tareas que se apoyan en esta base
+ 
+ - **E2-04** ✅ Alta de emergencias: `POST /api/emergencias` (+ `GET /api/emergencias`, `GET /api/emergencias/{id}`) en `EmergenciaController` / `EmergenciaService`, usados por el formulario del frontend.
+-- **E2-06** ✅ Alta de lotes: `POST /api/emergencias/{emergenciaId}/lotes` en `LoteController` / `LoteService`.
+-- **E2-08** Ofertas: falta `controller/` + `service/` + `dto/` sobre `Oferta` y `OfertaRepository` (ya existen).
++- **E2-06** ✅ Alta y listado de lotes: `POST` y `GET /api/emergencias/{emergenciaId}/lotes` en `LoteController` / `LoteService`. Falta la publicación de la convocatoria (ver `plan.md`).
++- **E2-08** ✅ Ofertas: `POST /api/lotes/{loteId}/ofertas` y `PUT /api/lotes/{loteId}/ofertas/{ofertaId}` en `OfertaController` / `OfertaService`.
+ - **E2-10 a E2-12** Integración con Bonita: `client/BonitaClient` usando el bean `bonitaRestClient` y `BonitaProperties`; `Emergencia.bonitaCaseId` queda listo para guardar el id de instancia.
+diff --git a/rescuesync-backend/src/main/java/com/grupo21/rescuesync/controller/LoteController.java b/rescuesync-backend/src/main/java/com/grupo21/rescuesync/controller/LoteController.java
+index 2afdd53..ea3621c 100644
+--- a/rescuesync-backend/src/main/java/com/grupo21/rescuesync/controller/LoteController.java
++++ b/rescuesync-backend/src/main/java/com/grupo21/rescuesync/controller/LoteController.java
+@@ -2,6 +2,7 @@ package com.grupo21.rescuesync.controller;
+ 
+ import org.springframework.http.HttpStatus;
+ import org.springframework.http.ResponseEntity;
++import org.springframework.web.bind.annotation.GetMapping;
+ import org.springframework.web.bind.annotation.PathVariable;
+ import org.springframework.web.bind.annotation.PostMapping;
+ import org.springframework.web.bind.annotation.RequestMapping;
+@@ -13,6 +14,9 @@ import com.grupo21.rescuesync.service.LoteService;
+ 
+ import org.springframework.web.bind.annotation.RequestBody;
+ import jakarta.validation.Valid;
++import io.swagger.v3.oas.annotations.Operation;
++
++import java.util.List;
+ 
+ import lombok.RequiredArgsConstructor;
+ 
+@@ -33,4 +37,10 @@ public class LoteController {
+                 .status(HttpStatus.CREATED)
+                 .body(response);
+     }
++
++    @Operation(summary = "Listar los lotes de una emergencia")
++    @GetMapping
++    public List<LoteResponse> listar(@PathVariable Long emergenciaId) {
++        return loteService.listarPorEmergencia(emergenciaId);
++    }
+ }
+\ No newline at end of file
+diff --git a/rescuesync-backend/src/main/java/com/grupo21/rescuesync/repository/LoteRepository.java b/rescuesync-backend/src/main/java/com/grupo21/rescuesync/repository/LoteRepository.java
+index 7682111..c9b01dd 100644
+--- a/rescuesync-backend/src/main/java/com/grupo21/rescuesync/repository/LoteRepository.java
++++ b/rescuesync-backend/src/main/java/com/grupo21/rescuesync/repository/LoteRepository.java
+@@ -10,5 +10,7 @@ public interface LoteRepository extends JpaRepository<Lote, Long> {
+ 
+     List<Lote> findByEmergenciaId(Long emergenciaId);
+ 
++    List<Lote> findByEmergenciaIdOrderByIdAsc(Long emergenciaId);
++
+     List<Lote> findByEmergenciaIdAndEstado(Long emergenciaId, EstadoLote estado);
+ }
+diff --git a/rescuesync-backend/src/main/java/com/grupo21/rescuesync/service/LoteService.java b/rescuesync-backend/src/main/java/com/grupo21/rescuesync/service/LoteService.java
+index aa21bf0..39863f3 100644
+--- a/rescuesync-backend/src/main/java/com/grupo21/rescuesync/service/LoteService.java
++++ b/rescuesync-backend/src/main/java/com/grupo21/rescuesync/service/LoteService.java
+@@ -9,6 +9,9 @@ import com.grupo21.rescuesync.repository.EmergenciaRepository;
+ import com.grupo21.rescuesync.repository.LoteRepository;
+ import lombok.RequiredArgsConstructor;
+ import org.springframework.stereotype.Service;
++import org.springframework.transaction.annotation.Transactional;
++
++import java.util.List;
+ 
+ @Service
+ @RequiredArgsConstructor
+@@ -40,6 +43,19 @@ public class LoteService {
+         return toResponse(guardado);
+     }
+ 
++    @Transactional(readOnly = true)
++    public List<LoteResponse> listarPorEmergencia(Long emergenciaId) {
++        if (!emergenciaRepository.existsById(emergenciaId)) {
++            throw new ResourceNotFoundException(
++                    "Emergencia con id " + emergenciaId + " no encontrada"
++            );
++        }
++
++        return loteRepository.findByEmergenciaIdOrderByIdAsc(emergenciaId).stream()
++                .map(this::toResponse)
++                .toList();
++    }
++
+     private LoteResponse toResponse(Lote lote) {
+         return new LoteResponse(
+                 lote.getId(),
+diff --git a/rescuesync-backend/src/test/java/com/grupo21/rescuesync/LoteIntegrationTests.java b/rescuesync-backend/src/test/java/com/grupo21/rescuesync/LoteIntegrationTests.java
+new file mode 100644
+index 0000000..544d61f
+--- /dev/null
++++ b/rescuesync-backend/src/test/java/com/grupo21/rescuesync/LoteIntegrationTests.java
+@@ -0,0 +1,112 @@
++package com.grupo21.rescuesync;
++
++import com.fasterxml.jackson.databind.ObjectMapper;
++import org.junit.jupiter.api.AfterEach;
++import org.junit.jupiter.api.Test;
++import org.springframework.beans.factory.annotation.Autowired;
++import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
++import org.springframework.boot.test.context.SpringBootTest;
++import org.springframework.http.MediaType;
++import org.springframework.jdbc.core.JdbcTemplate;
++import org.springframework.test.web.servlet.MockMvc;
++import org.springframework.test.web.servlet.MvcResult;
++
++import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
++import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
++import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
++import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
++
++@SpringBootTest
++@AutoConfigureMockMvc
++class LoteIntegrationTests {
++
++    private static final String EMERGENCIAS = "/api/emergencias";
++
++    @Autowired
++    private MockMvc mockMvc;
++
++    @Autowired
++    private ObjectMapper objectMapper;
++
++    @Autowired
++    private JdbcTemplate jdbcTemplate;
++
++    @AfterEach
++    void limpiarDatos() {
++        jdbcTemplate.update("DELETE FROM ofertas");
++        jdbcTemplate.update("DELETE FROM lotes");
++        jdbcTemplate.update("DELETE FROM emergencias");
++    }
++
++    @Test
++    void listaVaciaSiLaEmergenciaNoTieneLotes() throws Exception {
++        long id = registrarEmergencia();
++
++        mockMvc.perform(get(EMERGENCIAS + "/" + id + "/lotes"))
++                .andExpect(status().isOk())
++                .andExpect(jsonPath("$.length()").value(0));
++    }
++
++    @Test
++    void listaLosLotesDeLaEmergenciaEnOrdenDeCreacion() throws Exception {
++        long id = registrarEmergencia();
++        crearLote(id, "PERSONAL_VOLUNTARIO", "Paramédicos", 5, "personas");
++        crearLote(id, "ALIMENTOS", "Raciones de alimento", 1000, "raciones");
++
++        mockMvc.perform(get(EMERGENCIAS + "/" + id + "/lotes"))
++                .andExpect(status().isOk())
++                .andExpect(jsonPath("$.length()").value(2))
++                .andExpect(jsonPath("$[0].emergenciaId").value(id))
++                .andExpect(jsonPath("$[0].tipoRecurso").value("PERSONAL_VOLUNTARIO"))
++                .andExpect(jsonPath("$[0].cantidadRequerida").value(5))
++                .andExpect(jsonPath("$[1].tipoRecurso").value("ALIMENTOS"))
++                .andExpect(jsonPath("$[1].unidadMedida").value("raciones"))
++                .andExpect(jsonPath("$[1].estado").value("PUBLICADO"));
++    }
++
++    @Test
++    void noMezclaLotesDeOtrasEmergencias() throws Exception {
++        long primera = registrarEmergencia();
++        long segunda = registrarEmergencia();
++        crearLote(primera, "AGUA_POTABLE", "Bidones de agua", 200, "bidones");
++        crearLote(segunda, "MEDICAMENTOS", "Botiquines", 30, "unidades");
++
++        mockMvc.perform(get(EMERGENCIAS + "/" + primera + "/lotes"))
++                .andExpect(status().isOk())
++                .andExpect(jsonPath("$.length()").value(1))
++                .andExpect(jsonPath("$[0].tipoRecurso").value("AGUA_POTABLE"));
++    }
++
++    @Test
++    void devuelve404SiLaEmergenciaNoExiste() throws Exception {
++        mockMvc.perform(get(EMERGENCIAS + "/999999/lotes"))
++                .andExpect(status().isNotFound())
++                .andExpect(jsonPath("$.status").value(404));
++    }
++
++    private long registrarEmergencia() throws Exception {
++        MvcResult result = mockMvc.perform(post(EMERGENCIAS)
++                        .contentType(MediaType.APPLICATION_JSON)
++                        .content("""
++                                {"tipoDesastre":"INUNDACION","nivelGravedad":"ALTO",
++                                 "zonaAfectada":"Tolosa","descripcion":"Calles anegadas.",
++                                 "municipio":"La Plata"}
++                                """))
++                .andExpect(status().isCreated())
++                .andReturn();
++        return objectMapper.readTree(result.getResponse().getContentAsString()).get("id").asLong();
++    }
++
++    private void crearLote(long emergenciaId, String tipo, String descripcion,
++                           int cantidad, String unidad) throws Exception {
++        String body = objectMapper.writeValueAsString(java.util.Map.of(
++                "tipoRecurso", tipo,
++                "descripcion", descripcion,
++                "cantidadRequerida", cantidad,
++                "unidadMedida", unidad));
++        mockMvc.perform(post(EMERGENCIAS + "/" + emergenciaId + "/lotes")
++                        .contentType(MediaType.APPLICATION_JSON)
++                        .content(body))
++                .andExpect(status().isCreated());
++    }
++}
+diff --git a/rescuesync-frontend/tsconfig.app.tsbuildinfo b/rescuesync-frontend/tsconfig.app.tsbuildinfo
+new file mode 100644
+index 0000000..0be2ddc
+--- /dev/null
++++ b/rescuesync-frontend/tsconfig.app.tsbuildinfo
+@@ -0,0 +1 @@
++{"root":["./src/App.tsx","./src/main.tsx","./src/vite-env.d.ts","./src/api/client.ts","./src/api/emergencias.ts","./src/api/info.ts","./src/components/BackendStatus.tsx","./src/pages/AltaEmergenciaPage.tsx","./src/types/emergencia.ts"],"version":"5.9.3"}
+\ No newline at end of file
+diff --git a/rescuesync-frontend/tsconfig.node.tsbuildinfo b/rescuesync-frontend/tsconfig.node.tsbuildinfo
+new file mode 100644
+index 0000000..62c7bf9
+--- /dev/null
++++ b/rescuesync-frontend/tsconfig.node.tsbuildinfo
+@@ -0,0 +1 @@
++{"root":["./vite.config.ts"],"version":"5.9.3"}
+\ No newline at end of file
+-- 
+2.43.0
+
