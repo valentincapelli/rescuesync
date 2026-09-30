@@ -12,7 +12,7 @@ Backend de la aplicación web de RescueSync (DSSD 2026 – Grupo 21).
    docker compose up -d
    ```
 
-   Crea la base `rescuesync` en `localhost:5432` (usuario y contraseña: `rescuesync`).
+   Crea la base `rescuesync` en `localhost:5433` (usuario y contraseña: `rescuesync`).
    Si no usan Docker, creen esa base y ese usuario a mano en su PostgreSQL local.
 
 2. **Backend** (desde `DSSD/rescuesync-backend/`):
@@ -40,7 +40,7 @@ Backend de la aplicación web de RescueSync (DSSD 2026 – Grupo 21).
 | Bonita Studio / Bonita Runtime | 8080 |
 | **Backend (este proyecto)** | **8081** |
 | Frontend React (Vite) | 5173 |
-| PostgreSQL | 5432 |
+| PostgreSQL | 5433 |
 
 ## Configuración
 
