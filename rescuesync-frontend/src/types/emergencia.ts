@@ -64,3 +64,17 @@ export interface Emergencia {
   bonitaCaseId: number | null;
   createdAt: string;
 }
+
+export const ESTADO_EMERGENCIA_LABELS: Record<EstadoEmergencia, string> = {
+  REGISTRADA: 'Registrada',
+  EN_REVISION: 'En revisión',
+  CONVOCATORIA_PUBLICADA: 'Convocatoria publicada',
+  COBERTURA_EVALUADA: 'Cobertura evaluada',
+  COBERTURA_PARCIAL: 'Cobertura parcial',
+  ADJUDICADA: 'Adjudicada',
+  EN_EJECUCION: 'En ejecución',
+  CERRADA: 'Cerrada',
+};
+
+// Mientras la emergencia esté en estos estados, el CCR puede cargar/editar/borrar lotes.
+export const ESTADOS_DESGLOSE_ABIERTO: EstadoEmergencia[] = ['REGISTRADA', 'EN_REVISION'];

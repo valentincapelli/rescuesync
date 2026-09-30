@@ -281,7 +281,7 @@ class EmergenciaIntegrationTests {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.emergenciaId").value(id))
                 .andExpect(jsonPath("$.tipoRecurso").value("ALIMENTOS"))
-                .andExpect(jsonPath("$.estado").value("PUBLICADO"));
+                .andExpect(jsonPath("$.estado").value("BORRADOR"));
         assertThat(jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM lotes WHERE emergencia_id = ?", Long.class, id)).isEqualTo(1);
         mockMvc.perform(get(URL + "/" + id))

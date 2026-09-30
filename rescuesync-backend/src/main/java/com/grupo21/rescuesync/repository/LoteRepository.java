@@ -10,5 +10,9 @@ public interface LoteRepository extends JpaRepository<Lote, Long> {
 
     List<Lote> findByEmergenciaId(Long emergenciaId);
 
+    List<Lote> findByEmergenciaIdOrderByIdAsc(Long emergenciaId);
+
+    boolean existsByEmergenciaId(Long emergenciaId);
+
     List<Lote> findByEmergenciaIdAndEstado(Long emergenciaId, EstadoLote estado);
 }

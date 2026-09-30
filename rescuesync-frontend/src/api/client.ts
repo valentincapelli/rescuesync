@@ -37,14 +37,30 @@ export async function apiGet<T>(path: string): Promise<T> {
   return (await res.json()) as T;
 }
 
-export async function apiPost<T>(path: string, body: unknown): Promise<T> {
+export async function apiPost<T>(path: string, body?: unknown): Promise<T> {
+  return send<T>('POST', path, body);
+}
+
+export async function apiPut<T>(path: string, body: unknown): Promise<T> {
+  return send<T>('PUT', path, body);
+}
+
+export async function apiDelete(path: string): Promise<void> {
+  await send<void>('DELETE', path);
+}
+
+async function send<T>(method: string, path: string, body?: unknown): Promise<T> {
   const res = await fetch(`${API_URL}${path}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
+    method,
+    headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
+    body: body === undefined ? undefined : JSON.stringify(body),
   });
   if (!res.ok) {
-    throw await toApiError(res, `POST ${path} devolvió ${res.status}`);
+    throw await toApiError(res, `${method} ${path} devolvió ${res.status}`);
+  }
+  // 204 No Content (ej. DELETE) no trae cuerpo.
+  if (res.status === 204) {
+    return undefined as T;
   }
   return (await res.json()) as T;
 }
