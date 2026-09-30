@@ -3,7 +3,7 @@ spring:
     name: rescuesync-backend
 
   datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/rescuesync}
+    url: ${DB_URL:jdbc:postgresql://localhost:5433/rescuesync}
     username: ${DB_USER:rescuesync}
     password: ${DB_PASSWORD:rescuesync}
 
