@@ -107,13 +107,22 @@ public class BonitaClient {
                 }
                 return String.valueOf(caseId);
             });
+        } catch (HttpClientErrorException ex) {
+            log.error(
+                    "Error HTTP al instanciar proceso en Bonita. Status: {}, respuesta: {}",
+                    ex.getStatusCode(),
+                    ex.getResponseBodyAsString()
+            );
+
+            throw new BonitaIntegrationException(
+                    "No se pudo instanciar el proceso '" + idProceso + "' en Bonita",
+                    ex
+            );
         } catch (RestClientException ex) {
             throw new BonitaIntegrationException(
-                    "No se pudo instanciar el proceso '" + idProceso + "' en Bonita"
-                            + (entradasContrato.isEmpty()
-                                    ? ""
-                                    : " (revisar si el contrato de instanciación espera otras entradas)"),
-                    ex);
+                    "No se pudo instanciar el proceso '" + idProceso + "' en Bonita",
+                    ex
+            );
         }
     }
 
