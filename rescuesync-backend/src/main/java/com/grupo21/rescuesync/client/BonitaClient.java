@@ -45,6 +45,21 @@ public class BonitaClient {
     private final Object lock = new Object();
     private volatile BonitaSession session;
 
+    private record BonitaHumanTask(
+        String id,
+        String name,
+        String state,
+        String rootCaseId,
+        String assigned_id
+    ) {
+    }
+
+    private record BonitaSessionInfo(
+        String user_id,
+        String user_name
+    ) {
+    }
+
     /**
      * Verifica que el backend puede autenticarse contra Bonita y que el proceso
      * configurado (bonita.process-name) existe y está habilitado.
@@ -53,10 +68,10 @@ public class BonitaClient {
         String nombreProceso = bonitaProperties.processName();
 
         String idProceso = buscarIdProceso(nombreProceso)
-                .orElseThrow(() -> new BonitaIntegrationException(
-                        "Bonita respondió, pero no hay un proceso habilitado llamado '"
-                                + nombreProceso + "'. ¿Está desplegado y habilitado en Bonita Portal?",
-                        null));
+            .orElseThrow(() -> new BonitaIntegrationException(
+                "Bonita respondió, pero no hay un proceso habilitado llamado '"
+                + nombreProceso + "'. ¿Está desplegado y habilitado en Bonita Portal?",
+            null));
 
         return new BonitaEstadoResponse(idProceso, nombreProceso);
     }
@@ -124,6 +139,114 @@ public class BonitaClient {
                     ex
             );
         }
+    }
+
+    /**
+     * Busca una User Task activa de una instancia de proceso por nombre.
+     *
+     * @param caseId id de la instancia de proceso en Bonita
+     * @param nombreTarea nombre exacto de la User Task definida en el BPMN
+     * @return id de la tarea si existe y está en estado ready
+     */
+    public Optional<String> buscarTareaActiva(String caseId, String nombreTarea) {
+        return withSession(sesion -> {
+            List<BonitaHumanTask> tareas = bonitaRestClient.get()
+                .uri(uriBuilder -> uriBuilder
+                    .path("/API/bpm/humanTask")
+                    .queryParam("f", "rootCaseId=" + caseId)
+                    .queryParam("p", "0")
+                    .queryParam("c", "100")
+                    .build())
+                .headers(headers -> agregarHeadersDeSesion(headers, sesion))
+                .retrieve()
+                .body(new ParameterizedTypeReference<List<BonitaHumanTask>>() {});
+
+            if (tareas == null) {
+                return Optional.empty();
+            }
+
+            return tareas.stream()
+                .filter(tarea -> nombreTarea.equals(tarea.name()))
+                .filter(tarea -> "ready".equalsIgnoreCase(tarea.state()))
+                .findFirst()
+                .map(BonitaHumanTask::id);
+        });
+    }
+
+    public void asignarTarea(String taskId, String userId) {
+        withSession(sesion -> {
+            bonitaRestClient.put()
+                .uri("/API/bpm/humanTask/{taskId}", taskId)
+                .headers(headers -> agregarHeadersDeSesion(headers, sesion))
+                .body(Map.of("assigned_id", userId))
+                .retrieve()
+                .toBodilessEntity();
+
+            return null;
+        });
+    }
+
+    public void ejecutarTarea(String taskId) {
+        withSession(sesion -> {
+            bonitaRestClient.post()
+                .uri("/API/bpm/userTask/{taskId}/execution", taskId)
+                .headers(headers -> agregarHeadersDeSesion(headers, sesion))
+                .retrieve()
+                .toBodilessEntity();
+
+            return null;
+        });
+    }
+
+    public void completarTarea(String caseId, String nombreTarea) {
+        String taskId = null;
+
+        for (int intento = 1; intento <= 10; intento++) {
+            Optional<String> tarea = buscarTareaActiva(caseId, nombreTarea);
+
+            if (tarea.isPresent()) {
+                taskId = tarea.get();
+                break;
+            }
+
+            try {
+                Thread.sleep(200);
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
+                throw new IllegalStateException(
+                        "Interrumpida la espera de la tarea de Bonita",
+                        ex
+                );
+            }
+        }
+
+        if (taskId == null) {
+            throw new IllegalStateException(
+                    "No se encontró la tarea activa '%s' para el caso %s"
+                            .formatted(nombreTarea, caseId)
+            );
+        }
+
+        final String taskIdFinal = taskId;
+
+        withSession(sesion -> {
+            String userId = obtenerUserId(sesion);
+
+            bonitaRestClient.put()
+                    .uri("/API/bpm/humanTask/{taskId}", taskIdFinal)
+                    .headers(headers -> agregarHeadersDeSesion(headers, sesion))
+                    .body(Map.of("assigned_id", userId))
+                    .retrieve()
+                    .toBodilessEntity();
+
+            bonitaRestClient.post()
+                    .uri("/API/bpm/userTask/{taskId}/execution", taskIdFinal)
+                    .headers(headers -> agregarHeadersDeSesion(headers, sesion))
+                    .retrieve()
+                    .toBodilessEntity();
+
+            return null;
+        });
     }
 
     /**
@@ -211,5 +334,21 @@ public class BonitaClient {
             }
         }
         return null;
+    }
+
+    private String obtenerUserId(BonitaSession sesion) {
+        BonitaSessionInfo info = bonitaRestClient.get()
+            .uri("/API/system/session/unusedId")
+            .headers(headers -> agregarHeadersDeSesion(headers, sesion))
+            .retrieve()
+            .body(BonitaSessionInfo.class);
+
+        if (info == null || info.user_id() == null || info.user_id().isBlank()) {
+            throw new IllegalStateException(
+                "Bonita no devolvió el id del usuario autenticado"
+            );
+        }
+
+        return info.user_id();
     }
 }

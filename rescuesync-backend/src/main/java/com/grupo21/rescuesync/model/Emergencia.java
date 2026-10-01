@@ -16,6 +16,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -53,6 +54,9 @@ public class Emergencia extends BaseEntity {
     @Column(name = "estado", nullable = false, length = 30)
     private EstadoEmergencia estado = EstadoEmergencia.REGISTRADA;
 
+    @Column(name = "fecha_cierre_convocatoria")
+    private LocalDateTime fechaCierreConvocatoria;
+    
     /** Id de la instancia de proceso en Bonita una vez iniciada (E2-11/E2-12). Null hasta entonces. */
     @Column(name = "bonita_case_id")
     private Long bonitaCaseId;

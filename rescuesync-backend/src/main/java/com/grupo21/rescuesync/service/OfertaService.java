@@ -16,6 +16,9 @@ import com.grupo21.rescuesync.repository.OfertaRepository;
 import com.grupo21.rescuesync.repository.UsuarioRepository;
 
 import lombok.RequiredArgsConstructor;
+
+import java.time.LocalDateTime;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -123,14 +126,28 @@ public class OfertaService {
         }
 
     /** Solo se oferta sobre lotes de una convocatoria publicada (no en BORRADOR ni cerrados). */
-    private void validarLotePublicado(Lote lote) {
+        private void validarLotePublicado(Lote lote) {
         if (lote.getEstado() != EstadoLote.PUBLICADO) {
-            throw new BusinessException(
-                    "El lote " + lote.getId() + " está en estado " + lote.getEstado()
-                            + ": no admite ofertas"
-            );
+                throw new BusinessException(
+                        "El lote " + lote.getId() + " está en estado " + lote.getEstado()
+                                + ": no admite ofertas"
+                );
         }
-    }
+
+        if (lote.getEmergencia().getFechaCierreConvocatoria() == null) {
+                throw new BusinessException(
+                        "La convocatoria no tiene una fecha de cierre definida"
+                );
+        }
+
+        if (!LocalDateTime.now().isBefore(
+                lote.getEmergencia().getFechaCierreConvocatoria()
+        )) {
+                throw new BusinessException(
+                        "El período de recepción de ofertas ha finalizado"
+                );
+        }
+        }
 
     private OfertaResponse toResponse(Oferta oferta) {
         return new OfertaResponse(

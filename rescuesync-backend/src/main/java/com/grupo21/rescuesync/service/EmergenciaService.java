@@ -1,5 +1,12 @@
 package com.grupo21.rescuesync.service;
 
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
+import java.util.Map;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.grupo21.rescuesync.client.BonitaClient;
 import com.grupo21.rescuesync.config.BonitaProperties;
 import com.grupo21.rescuesync.config.ConvocatoriaProperties;
@@ -20,10 +27,6 @@ import com.grupo21.rescuesync.repository.UsuarioRepository;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.util.Map;
 
 @Slf4j
 @Service
@@ -99,11 +102,13 @@ public class EmergenciaService {
             emergencia.setBonitaCaseId(Long.valueOf(caseId));
             emergenciaRepository.save(emergencia);
 
+            bonitaClient.completarTarea(caseId, "Registrar emergencia");
+
             log.info("Emergencia {}: instancia de Bonita creada, caseId={}", emergencia.getId(), caseId);
         } catch (BonitaIntegrationException ex) {
             log.warn("Emergencia {}: no se pudo instanciar el proceso en Bonita ({})",
                     emergencia.getId(), ex.getMessage());
-        } catch (NumberFormatException ex) {
+        } catch (NumberFormatException | IllegalStateException ex) {
             log.warn("Emergencia {}: Bonita devolvió un caseId no numérico ({})",
                     emergencia.getId(), ex.getMessage());
         }
@@ -131,22 +136,33 @@ public class EmergenciaService {
      */
     @Transactional
     public EmergenciaResponse publicarConvocatoria(Long id) {
-        Emergencia emergencia = emergenciaRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Emergencia", id));
+    Emergencia emergencia = emergenciaRepository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Emergencia", id));
 
-        LoteService.validarDesgloseAbierto(emergencia);
+    LoteService.validarDesgloseAbierto(emergencia);
 
-        java.util.List<Lote> lotes = loteRepository.findByEmergenciaIdOrderByIdAsc(id);
-        if (lotes.isEmpty()) {
+    java.util.List<Lote> lotes = loteRepository.findByEmergenciaId(id);
+
+    if (lotes.isEmpty()) {
             throw new BusinessException(
                     "La emergencia " + id + " no tiene lotes: cargá al menos uno antes de publicar la convocatoria"
             );
-        }
+    }
 
-        lotes.forEach(lote -> lote.setEstado(EstadoLote.PUBLICADO));
-        emergencia.setEstado(EstadoEmergencia.CONVOCATORIA_PUBLICADA);
+    lotes.forEach(lote -> lote.setEstado(EstadoLote.PUBLICADO));
 
-        return toResponse(emergencia);
+    emergencia.setEstado(EstadoEmergencia.CONVOCATORIA_PUBLICADA);
+
+    emergencia.setFechaCierreConvocatoria(
+            LocalDateTime.now().plus(
+                    convocatoriaProperties.plazoMs(),
+                    ChronoUnit.MILLIS
+            )
+    );
+
+    sincronizarPublicacionConBonita(emergencia);
+
+    return toResponse(emergencia);
     }
 
     private EmergenciaResponse toResponse(Emergencia emergencia) {
@@ -161,5 +177,43 @@ public class EmergenciaService {
                 emergencia.getBonitaCaseId(),
                 emergencia.getCreatedAt()
         );
+    }
+
+    private void sincronizarPublicacionConBonita(Emergencia emergencia) {
+        if (emergencia.getBonitaCaseId() == null) {
+            log.warn(
+                    "Emergencia {}: no tiene bonitaCaseId; no se sincroniza la publicación con Bonita",
+                    emergencia.getId()
+            );
+            return;
+        }
+
+        String caseId = emergencia.getBonitaCaseId().toString();
+
+        try {
+            bonitaClient.completarTarea(
+                    caseId,
+                    "Revisar y desglosar emergencia"
+            );
+
+            bonitaClient.completarTarea(
+                    caseId,
+                    "Publicar convocatoria"
+            );
+
+            log.info(
+                    "Emergencia {}: publicación sincronizada con Bonita, caseId={}",
+                    emergencia.getId(),
+                    caseId
+            );
+
+        } catch (RuntimeException ex) {
+            log.warn(
+                    "Emergencia {}: no se pudo sincronizar la publicación con Bonita, caseId={} ({})",
+                    emergencia.getId(),
+                    caseId,
+                    ex.getMessage()
+            );
+        }
     }
 }
