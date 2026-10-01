@@ -1,6 +1,5 @@
 // Espeja los enums de com.grupo21.rescuesync.model del backend.
 // Si se agrega/renombra un valor ahí, hay que actualizar esto también.
-
 export const TIPOS_DESASTRE = [
   'INUNDACION',
   'INCENDIO',
@@ -10,11 +9,16 @@ export const TIPOS_DESASTRE = [
   'DESLIZAMIENTO',
   'OTRO',
 ] as const;
-export type TipoDesastre = (typeof TIPOS_DESASTRE)[number];
-
-export const NIVELES_GRAVEDAD = ['BAJO', 'MEDIO', 'ALTO', 'CRITICO'] as const;
-export type NivelGravedad = (typeof NIVELES_GRAVEDAD)[number];
-
+export type TipoDesastre =
+  (typeof TIPOS_DESASTRE)[number];
+export const NIVELES_GRAVEDAD = [
+  'BAJO',
+  'MEDIO',
+  'ALTO',
+  'CRITICO',
+] as const;
+export type NivelGravedad =
+  (typeof NIVELES_GRAVEDAD)[number];
 export type EstadoEmergencia =
   | 'REGISTRADA'
   | 'EN_REVISION'
@@ -49,9 +53,7 @@ export interface CrearEmergenciaRequest {
   nivelGravedad: NivelGravedad;
   zonaAfectada: string;
   descripcion: string;
-  municipio: string;
 }
-
 // Espeja EmergenciaResponse del backend.
 export interface Emergencia {
   id: number;
