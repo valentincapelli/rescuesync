@@ -34,6 +34,10 @@ app:
   cors:
     # Vite (React) corre por defecto en el 5173
     allowed-origins: ${CORS_ORIGINS:http://localhost:5173}
+  convocatoria:
+    # Duración de la ventana de recepción de ofertas.
+    # 172800000 ms = 2 días. Puede sobrescribirse para pruebas.
+    plazo-ms: ${PLAZO_CONVOCATORIA_MS:172800000}
 
 bonita:
   base-url: ${BONITA_URL:http://localhost:8080/bonita}

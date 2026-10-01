@@ -2,6 +2,7 @@ package com.grupo21.rescuesync.service;
 
 import com.grupo21.rescuesync.client.BonitaClient;
 import com.grupo21.rescuesync.config.BonitaProperties;
+import com.grupo21.rescuesync.config.ConvocatoriaProperties;
 import com.grupo21.rescuesync.dto.CrearEmergenciaRequest;
 import com.grupo21.rescuesync.dto.EmergenciaResponse;
 import com.grupo21.rescuesync.exception.BonitaIntegrationException;
@@ -54,6 +55,9 @@ public class EmergenciaService {
                         "El usuario no está asociado a un municipio"
                 );
         }
+    private final ConvocatoriaProperties convocatoriaProperties;
+
+    public EmergenciaResponse crear(CrearEmergenciaRequest request) {
         Emergencia emergencia = new Emergencia();
 
         emergencia.setTipoDesastre(request.tipoDesastre());
@@ -84,9 +88,14 @@ public class EmergenciaService {
                             "No hay un proceso habilitado llamado '" + bonitaProperties.processName()
                                     + "' en Bonita", null));
 
-            // Sin entradas por ahora: si el proceso tiene un Contrato de instanciación
-            // con inputs definidos en Studio, hay que mandarlos acá como Map.of("input", valor).
-            String caseId = bonitaClient.instanciarProceso(idProceso, Map.of());
+            // Entradas del contrato de instanciación definido en Bonita Studio.
+            // Bonita las utiliza para inicializar las variables de proceso.
+            Map<String, Object> entradasContrato = Map.of(
+                    "emergenciaIdInput", emergencia.getId(),
+                    "plazoConvocatoriaInput", convocatoriaProperties.plazoMs()
+            );
+
+            String caseId = bonitaClient.instanciarProceso(idProceso, entradasContrato);
 
             emergencia.setBonitaCaseId(Long.valueOf(caseId));
             emergenciaRepository.save(emergencia);
