@@ -2,6 +2,7 @@ package com.grupo21.rescuesync.security;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -32,65 +33,79 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final ObjectMapper objectMapper;
 
     @Override
-    protected void doFilterInternal(
-            HttpServletRequest request,
-            HttpServletResponse response,
-            FilterChain filterChain
-    ) throws ServletException, IOException {
+        protected void doFilterInternal(
+                HttpServletRequest request,
+                HttpServletResponse response,
+                FilterChain filterChain
+        ) throws ServletException, IOException {
 
-        String authHeader = request.getHeader("Authorization");
+        String token = null;
 
-        // No hay token: dejamos que Security determine si el endpoint
-        // requiere autenticación.
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            filterChain.doFilter(request, response);
-            return;
+        Cookie[] cookies = request.getCookies();
+
+        if (cookies != null) {
+                for (Cookie cookie : cookies) {
+                if ("access_token".equals(cookie.getName())) {
+                        token = cookie.getValue();
+                        break;
+                }
+                }
         }
-        
-        String token = authHeader.substring(7);
+
+        if (token == null) {
+                filterChain.doFilter(request, response);
+                return;
+        }
 
         try {
-            Claims claims = jwtService.extraerClaims(token);
-            String email = claims.getSubject();
-            if (email != null &&
-                    SecurityContextHolder.getContext().getAuthentication() == null) {
+                Claims claims = jwtService.extraerClaims(token);
+
+                String email = claims.getSubject();
+
+                if (email != null &&
+                        SecurityContextHolder
+                                .getContext()
+                                .getAuthentication() == null) {
 
                 UserDetails userDetails =
-                        usuarioDetailsService.loadUserByUsername(email);
+                        usuarioDetailsService
+                                .loadUserByUsername(email);
 
                 if (jwtService.validarClaims(claims, userDetails)) {
 
-                    UsernamePasswordAuthenticationToken authentication =
-                            new UsernamePasswordAuthenticationToken(
-                                    userDetails,
-                                    null,
-                                    userDetails.getAuthorities()
-                            );
+                        UsernamePasswordAuthenticationToken authentication =
+                                new UsernamePasswordAuthenticationToken(
+                                        userDetails,
+                                        null,
+                                        userDetails.getAuthorities()
+                                );
 
-                    authentication.setDetails(
-                            new WebAuthenticationDetailsSource()
-                                    .buildDetails(request)
-                    );
+                        authentication.setDetails(
+                                new WebAuthenticationDetailsSource()
+                                        .buildDetails(request)
+                        );
 
-                    SecurityContextHolder.getContext()
-                            .setAuthentication(authentication);
+                        SecurityContextHolder
+                                .getContext()
+                                .setAuthentication(authentication);
                 }
-            }
+                }
 
         } catch (ExpiredJwtException ex) {
-            responder401(response, request, "Token expirado");
-            return;
+                responder401(response, request, "Token expirado");
+                return;
 
         } catch (JwtException | IllegalArgumentException ex) {
-            responder401(response, request, "Token inválido");
-            return;
-        }  catch (UsernameNotFoundException ex) {
+                responder401(response, request, "Token inválido");
+                return;
+
+        } catch (UsernameNotFoundException ex) {
                 responder401(response, request, "Token inválido");
                 return;
         }
 
         filterChain.doFilter(request, response);
-    }
+        }
 
     private void responder401(
             HttpServletResponse response,
