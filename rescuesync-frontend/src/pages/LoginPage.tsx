@@ -9,11 +9,40 @@ interface LoginPageProps {
   onLogin: (request: LoginRequest) => Promise<void>;
 }
 
+interface FieldErrors {
+  email?: string;
+  password?: string;
+}
+
+function validate(form: LoginRequest): FieldErrors {
+  const errors: FieldErrors = {};
+
+  const email = form.email.trim();
+  const password = form.password;
+
+  if (!email) {
+    errors.email = 'El email es obligatorio.';
+  } else if (
+    !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+  ) {
+    errors.email = 'Ingresá un email válido.';
+  }
+
+  if (!password) {
+    errors.password = 'La contraseña es obligatoria.';
+  }
+
+  return errors;
+}
+
 export function LoginPage({ onLogin }: LoginPageProps) {
   const [form, setForm] = useState<LoginRequest>({
     email: '',
     password: '',
   });
+
+  const [fieldErrors, setFieldErrors] =
+    useState<FieldErrors>({});
 
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -27,6 +56,14 @@ export function LoginPage({ onLogin }: LoginPageProps) {
       ...prev,
       [name]: value,
     }));
+
+    // Limpia el error del campo mientras el usuario corrige.
+    setFieldErrors((prev) => ({
+      ...prev,
+      [name]: undefined,
+    }));
+
+    setError('');
   }
 
   async function handleSubmit(
@@ -35,10 +72,23 @@ export function LoginPage({ onLogin }: LoginPageProps) {
     event.preventDefault();
 
     setError('');
+
+    const errors = validate(form);
+
+    setFieldErrors(errors);
+
+    // No hacemos la petición si hay errores.
+    if (Object.keys(errors).length > 0) {
+      return;
+    }
+
     setLoading(true);
 
     try {
-      await onLogin(form);
+      await onLogin({
+        email: form.email.trim(),
+        password: form.password,
+      });
     } catch (error) {
       if (error instanceof ApiError) {
         setError(error.message);
@@ -82,7 +132,11 @@ export function LoginPage({ onLogin }: LoginPageProps) {
           onSubmit={handleSubmit}
           noValidate
         >
-          <div className="login-field">
+          <div
+            className={`login-field ${
+              fieldErrors.email ? 'has-error' : ''
+            }`}
+          >
             <label htmlFor="email">
               Email
             </label>
@@ -97,10 +151,29 @@ export function LoginPage({ onLogin }: LoginPageProps) {
               autoComplete="email"
               required
               disabled={loading}
+              aria-invalid={!!fieldErrors.email}
+              aria-describedby={
+                fieldErrors.email
+                  ? 'email-error'
+                  : undefined
+              }
             />
+
+            {fieldErrors.email && (
+              <span
+                id="email-error"
+                className="login-field-error"
+              >
+                {fieldErrors.email}
+              </span>
+            )}
           </div>
 
-          <div className="login-field">
+          <div
+            className={`login-field ${
+              fieldErrors.password ? 'has-error' : ''
+            }`}
+          >
             <label htmlFor="password">
               Contraseña
             </label>
@@ -115,7 +188,22 @@ export function LoginPage({ onLogin }: LoginPageProps) {
               autoComplete="current-password"
               required
               disabled={loading}
+              aria-invalid={!!fieldErrors.password}
+              aria-describedby={
+                fieldErrors.password
+                  ? 'password-error'
+                  : undefined
+              }
             />
+
+            {fieldErrors.password && (
+              <span
+                id="password-error"
+                className="login-field-error"
+              >
+                {fieldErrors.password}
+              </span>
+            )}
           </div>
 
           {error && (
