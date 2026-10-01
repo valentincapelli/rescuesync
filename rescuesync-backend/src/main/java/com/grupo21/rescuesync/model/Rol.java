@@ -5,12 +5,15 @@ import java.util.Set;
 public enum Rol {
 
     OPERADOR_MUNICIPAL(
-            Permiso.CREAR_LOTE,
-            Permiso.EDITAR_LOTE,
-            Permiso.CONSULTAR_LOTES
+            Permiso.CONSULTAR_LOTES,
+            Permiso.REGISTRAR_EMERGENCIA,
+            Permiso.PUBLICAR_EMERGENCIA
     ),
 
     CENTRO_COORDINADOR(
+            Permiso.CREAR_LOTE,
+            Permiso.EDITAR_LOTE,
+            Permiso.BORRAR_LOTE,
             Permiso.CONSULTAR_EMERGENCIAS,
             Permiso.CONSULTAR_LOTES,
             Permiso.CONSULTAR_OFERTAS
@@ -19,7 +22,9 @@ public enum Rol {
     REPRESENTANTE_ONG(
             Permiso.CREAR_OFERTA,
             Permiso.EDITAR_OFERTA,
-            Permiso.CONSULTAR_OFERTAS
+            Permiso.CONSULTAR_OFERTAS,
+            Permiso.CONSULTAR_LOTES,
+            Permiso.CONSULTAR_EMERGENCIAS
     );
 
     private final Set<Permiso> permisos;

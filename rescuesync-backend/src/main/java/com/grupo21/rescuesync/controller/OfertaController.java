@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -25,6 +26,7 @@ public class OfertaController {
 
     private final OfertaService ofertaService;
 
+    @PreAuthorize("hasAuthority('CREAR_OFERTA')")
     @PostMapping
     public ResponseEntity<OfertaResponse> crear(
             @PathVariable Long loteId,
@@ -37,6 +39,7 @@ public class OfertaController {
                 .body(response);
     }
 
+    @PreAuthorize("hasAuthority('EDITAR_OFERTA')")
     @PutMapping("/{ofertaId}")
     public ResponseEntity<OfertaResponse> editar(
             @PathVariable Long ofertaId,

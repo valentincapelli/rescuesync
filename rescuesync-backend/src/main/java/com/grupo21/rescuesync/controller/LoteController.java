@@ -9,6 +9,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -29,6 +30,7 @@ public class LoteController {
     private final LoteService loteService;
 
     @Operation(summary = "Crear un lote (queda en BORRADOR hasta publicar la convocatoria)")
+    @PreAuthorize("hasAuthority('CREAR_LOTE')")
     @PostMapping
     public ResponseEntity<LoteResponse> crear(
             @PathVariable Long emergenciaId,
@@ -42,12 +44,14 @@ public class LoteController {
     }
 
     @Operation(summary = "Listar los lotes de una emergencia")
+    @PreAuthorize("hasAuthority('CONSULTAR_LOTES')")
     @GetMapping
     public List<LoteResponse> listar(@PathVariable Long emergenciaId) {
         return loteService.listarPorEmergencia(emergenciaId);
     }
 
     @Operation(summary = "Editar un lote mientras la convocatoria no esté publicada")
+    @PreAuthorize("hasAuthority('EDITAR_LOTE')")
     @PutMapping("/{loteId}")
     public LoteResponse editar(
             @PathVariable Long emergenciaId,
@@ -58,6 +62,7 @@ public class LoteController {
     }
 
     @Operation(summary = "Borrar un lote mientras la convocatoria no esté publicada")
+    @PreAuthorize("hasAuthority('BORRAR_LOTE')")
     @DeleteMapping("/{loteId}")
     public ResponseEntity<Void> eliminar(
             @PathVariable Long emergenciaId,

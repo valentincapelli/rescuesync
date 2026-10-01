@@ -30,7 +30,11 @@ public class UsuarioDetailsService implements UserDetailsService {
                 .username(usuario.getEmail())
                 .password(usuario.getPasswordHash())
                 .authorities(
-                        usuario.getRol().name()
+                    usuario.getRol()
+                            .getPermisos()
+                            .stream()
+                            .map(Enum::name)
+                            .toArray(String[]::new)
                 )
                 .build();
     }
