@@ -10,5 +10,5 @@ public interface EmergenciaRepository extends JpaRepository<Emergencia, Long> {
 
     List<Emergencia> findByEstado(EstadoEmergencia estado);
 
-    List<Emergencia> findByMunicipioIgnoreCase(String municipio);
+    List<Emergencia> findByMunicipioId(Long municipioId);
 }

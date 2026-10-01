@@ -9,8 +9,11 @@ import com.grupo21.rescuesync.model.EstadoLote;
 import com.grupo21.rescuesync.model.EstadoOferta;
 import com.grupo21.rescuesync.model.Lote;
 import com.grupo21.rescuesync.model.Oferta;
+import com.grupo21.rescuesync.model.Ong;
+import com.grupo21.rescuesync.model.Usuario;
 import com.grupo21.rescuesync.repository.LoteRepository;
 import com.grupo21.rescuesync.repository.OfertaRepository;
+import com.grupo21.rescuesync.repository.UsuarioRepository;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -22,29 +25,48 @@ public class OfertaService {
 
     private final OfertaRepository ofertaRepository;
     private final LoteRepository loteRepository;
+    private final UsuarioRepository usuarioRepository;
 
     @Transactional
-    public OfertaResponse crear(Long loteId, CrearOfertaRequest request) {
-
+    public OfertaResponse crear(
+                Long loteId,
+                CrearOfertaRequest request,
+                String emailUsuario
+        ) {
         Lote lote = loteRepository.findById(loteId)
                 .orElseThrow(() ->
                         new ResourceNotFoundException(
                                 "Lote con id " + loteId + " no encontrado"
                         )
                 );
+
         validarLotePublicado(lote);
 
-        Oferta ofertaExistente = ofertaRepository.findByOngNombreIgnoreCaseAndLoteId(request.ongNombre(), loteId)
-                .stream()
-                .findFirst()
-                .orElse(null);
-        if (ofertaExistente != null) {
-            throw new BusinessException("Ya existe una oferta de esta ONG para este lote");
+        Usuario usuario = usuarioRepository.findByEmail(emailUsuario)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Usuario no encontrado"
+                        )
+                );
+
+        Ong ong = usuario.getOng();
+
+        if (ong == null) {
+                throw new BusinessException(
+                        "El usuario no está asociado a una ONG"
+                );
         }
+
+        if (!ofertaRepository.findByOngIdAndLoteId(ong.getId(), loteId).isEmpty()) {
+                throw new BusinessException(
+                        "Ya existe una oferta de esta ONG para este lote"
+                );
+        }
+
         Oferta oferta = new Oferta();
 
         oferta.setLote(lote);
-        oferta.setOngNombre(request.ongNombre());
+        oferta.setOng(ong);
         oferta.setCantidadOfrecida(request.cantidadOfrecida());
         oferta.setObservaciones(request.observaciones());
         oferta.setEstado(EstadoOferta.PENDIENTE);
@@ -52,10 +74,14 @@ public class OfertaService {
         Oferta guardada = ofertaRepository.save(oferta);
 
         return toResponse(guardada);
-    }
+        }
 
     @Transactional
-    public OfertaResponse editar(Long ofertaId, EditarOfertaRequest request) {
+    public OfertaResponse editar(
+                Long ofertaId,
+                EditarOfertaRequest request,
+                String emailUsuario
+        ) {
 
         Oferta oferta = ofertaRepository.findById(ofertaId)
                 .orElseThrow(() ->
@@ -63,10 +89,26 @@ public class OfertaService {
                                 "Oferta con id " + ofertaId + " no encontrada"
                         )
                 );
+        
+        Usuario usuario = usuarioRepository.findByEmail(emailUsuario)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Usuario no encontrado"
+                        )
+                );
 
-        if (!oferta.getOngNombre().equalsIgnoreCase(request.ongNombre().trim())) {
+        Ong ong = usuario.getOng();
+
+        if (ong == null) {
                 throw new BusinessException(
-                        "La ONG indicada no tiene permiso para editar esta oferta"
+                        "El usuario no está asociado a una ONG"
+                );
+        }
+        
+
+        if (!oferta.getOng().getId().equals(ong.getId())) {
+                throw new BusinessException(
+                        "La ONG no tiene permiso para editar esta oferta"
                 );
         }
 
@@ -94,10 +136,10 @@ public class OfertaService {
         return new OfertaResponse(
                 oferta.getId(),
                 oferta.getLote().getId(),
-                oferta.getOngNombre(),
+                oferta.getOng().getNombre(),
                 oferta.getCantidadOfrecida(),
                 oferta.getObservaciones(),
                 oferta.getEstado()
         );
     }
-}
+}

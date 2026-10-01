@@ -18,9 +18,5 @@ public record CrearEmergenciaRequest(
         String zonaAfectada,
 
         @NotBlank
-        String descripcion,
-
-        @NotBlank
-        @Size(max = 150)
-        String municipio
+        String descripcion
 ) {}

@@ -10,6 +10,9 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -29,10 +32,14 @@ public class EmergenciaController {
     private final EmergenciaService emergenciaService;
 
     @Operation(summary = "Registrar una nueva emergencia")
+    @PreAuthorize("hasAuthority('REGISTRAR_EMERGENCIA')")
     @ApiResponse(responseCode = "201", description = "Emergencia registrada")
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<EmergenciaResponse> crear(@Valid @RequestBody CrearEmergenciaRequest request) {
-        EmergenciaResponse response = emergenciaService.crear(request);
+    public ResponseEntity<EmergenciaResponse> crear(
+        @Valid @RequestBody CrearEmergenciaRequest request,
+        @AuthenticationPrincipal UserDetails userDetails
+    ) {
+        EmergenciaResponse response = emergenciaService.crear(request, userDetails.getUsername());
 
         return ResponseEntity
                 .created(URI.create("/api/emergencias/" + response.id()))
@@ -40,6 +47,7 @@ public class EmergenciaController {
     }
 
     @Operation(summary = "Listar emergencias registradas")
+    @PreAuthorize("hasAuthority('CONSULTAR_EMERGENCIAS')")
     @GetMapping
     public List<EmergenciaResponse> listar() {
         return emergenciaService.listar();
@@ -48,6 +56,7 @@ public class EmergenciaController {
     @Operation(summary = "Publicar la convocatoria de la emergencia",
             description = "Pasa la emergencia a CONVOCATORIA_PUBLICADA y todos sus lotes a PUBLICADO. "
                     + "409 si no tiene lotes o si ya estaba publicada.")
+    @PreAuthorize("hasAuthority('PUBLICAR_CONVOCATORIA')")
     @ApiResponse(responseCode = "200", description = "Convocatoria publicada")
     @ApiResponse(responseCode = "409", description = "Sin lotes o convocatoria ya publicada")
     @PostMapping("/{id}/convocatoria")
@@ -56,6 +65,7 @@ public class EmergenciaController {
     }
 
     @Operation(summary = "Obtener una emergencia por id")
+    @PreAuthorize("hasAuthority('CONSULTAR_EMERGENCIAS')")
     @GetMapping("/{id}")
     public EmergenciaResponse obtener(@PathVariable Long id) {
         return emergenciaService.obtener(id);

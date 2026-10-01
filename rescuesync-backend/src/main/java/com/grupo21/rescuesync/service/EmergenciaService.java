@@ -12,8 +12,12 @@ import com.grupo21.rescuesync.model.Emergencia;
 import com.grupo21.rescuesync.model.EstadoEmergencia;
 import com.grupo21.rescuesync.model.EstadoLote;
 import com.grupo21.rescuesync.model.Lote;
+import com.grupo21.rescuesync.model.Municipio;
+import com.grupo21.rescuesync.model.Usuario;
 import com.grupo21.rescuesync.repository.EmergenciaRepository;
 import com.grupo21.rescuesync.repository.LoteRepository;
+import com.grupo21.rescuesync.repository.UsuarioRepository;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -30,6 +34,27 @@ public class EmergenciaService {
     private final LoteRepository loteRepository;
     private final BonitaClient bonitaClient;
     private final BonitaProperties bonitaProperties;
+    private final UsuarioRepository usuarioRepository;
+
+        @Transactional
+    public EmergenciaResponse crear(
+            CrearEmergenciaRequest request,
+            String emailUsuario
+        ) {
+        Usuario usuario = usuarioRepository.findByEmail(emailUsuario)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Usuario no encontrado"
+                        )
+                );
+
+        Municipio municipio = usuario.getMunicipio();
+
+        if (municipio == null) {
+                throw new BusinessException(
+                        "El usuario no está asociado a un municipio"
+                );
+        }
     private final ConvocatoriaProperties convocatoriaProperties;
 
     public EmergenciaResponse crear(CrearEmergenciaRequest request) {
@@ -39,7 +64,7 @@ public class EmergenciaService {
         emergencia.setNivelGravedad(request.nivelGravedad());
         emergencia.setZonaAfectada(request.zonaAfectada());
         emergencia.setDescripcion(request.descripcion());
-        emergencia.setMunicipio(request.municipio());
+        emergencia.setMunicipio(municipio);
         emergencia.setEstado(EstadoEmergencia.REGISTRADA);
 
         Emergencia guardada = emergenciaRepository.save(emergencia);
@@ -132,7 +157,7 @@ public class EmergenciaService {
                 emergencia.getNivelGravedad(),
                 emergencia.getZonaAfectada(),
                 emergencia.getDescripcion(),
-                emergencia.getMunicipio(),
+                emergencia.getMunicipio().getNombre(),
                 emergencia.getEstado(),
                 emergencia.getBonitaCaseId(),
                 emergencia.getCreatedAt()
