@@ -3,7 +3,11 @@ package com.grupo21.rescuesync;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.grupo21.rescuesync.model.Rol;
+import com.grupo21.rescuesync.model.Usuario;
+import com.grupo21.rescuesync.security.JwtService;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -29,7 +33,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest
+@SpringBootTest(properties = {
+        "jwt.secret=test-signing-key-for-integration-tests-32bytes",
+        "jwt.expiration=86400000"
+})
 @AutoConfigureMockMvc
 class EmergenciaIntegrationTests {
 
@@ -39,10 +46,12 @@ class EmergenciaIntegrationTests {
               "tipoDesastre": "INUNDACION",
               "nivelGravedad": "ALTO",
               "zonaAfectada": "Tolosa",
-              "descripcion": "Calles anegadas y familias que necesitan asistencia.",
-              "municipio": "La Plata"
+              "descripcion": "Calles anegadas y familias que necesitan asistencia."
             }
             """;
+                private static final String EMAIL_OPERADOR = "operador-test@rescuesync.local";
+                private static final String EMAIL_CENTRO = "centro-test@rescuesync.local";
+                private static final String NOMBRE_MUNICIPIO = "La Plata";
 
     @Autowired
     private MockMvc mockMvc;
@@ -53,18 +62,40 @@ class EmergenciaIntegrationTests {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
+    @Autowired
+    private JwtService jwtService;
+
+    private Long municipioId;
+    private String tokenOperador;
+    private String tokenCentro;
+
+    @BeforeEach
+    void prepararUsuariosYMunicipio() {
+        jdbcTemplate.update("INSERT INTO municipios (nombre, created_at, updated_at) "
+                + "VALUES (?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)", NOMBRE_MUNICIPIO);
+        municipioId = jdbcTemplate.queryForObject(
+                "SELECT id FROM municipios WHERE nombre = ?", Long.class, NOMBRE_MUNICIPIO);
+        crearUsuario(EMAIL_OPERADOR, Rol.OPERADOR_MUNICIPAL);
+        crearUsuario(EMAIL_CENTRO, Rol.CENTRO_COORDINADOR);
+        tokenOperador = crearToken(EMAIL_OPERADOR, Rol.OPERADOR_MUNICIPAL);
+        tokenCentro = crearToken(EMAIL_CENTRO, Rol.CENTRO_COORDINADOR);
+    }
+
     // Sin @Transactional en el test: cada petición confirma su transacción y luego
     // verificamos los datos por JDBC, sin depender del contexto de persistencia JPA.
     @AfterEach
     void limpiarDatos() {
         jdbcTemplate.update("DELETE FROM lotes");
         jdbcTemplate.update("DELETE FROM emergencias");
+                jdbcTemplate.update("DELETE FROM usuarios WHERE email IN (?, ?)", EMAIL_OPERADOR, EMAIL_CENTRO);
+                jdbcTemplate.update("DELETE FROM municipios WHERE nombre = ?", NOMBRE_MUNICIPIO);
     }
 
     @Test
     void altaPersisteTodosLosDatosYPermiteConsultarlosYListarlos() throws Exception {
         Instant antesDelAlta = Instant.now();
         MvcResult result = mockMvc.perform(post(URL)
+                        .header("Authorization", "Bearer " + tokenOperador)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(ALTA_VALIDA))
                 .andExpect(status().isCreated())
@@ -90,18 +121,19 @@ class EmergenciaIntegrationTests {
                 .containsEntry("nivel_gravedad", "ALTO")
                 .containsEntry("zona_afectada", "Tolosa")
                 .containsEntry("descripcion", response.get("descripcion").asText())
-                .containsEntry("municipio", "La Plata")
+                .containsEntry("municipio_id", municipioId)
                 .containsEntry("estado", "REGISTRADA")
                 .containsEntry("bonita_case_id", null);
         assertThat(fila.get("created_at")).isNotNull();
         assertThat(fila.get("updated_at")).isEqualTo(fila.get("created_at"));
 
-        mockMvc.perform(get(result.getResponse().getHeader("Location")))
+        mockMvc.perform(get(result.getResponse().getHeader("Location"))
+                        .header("Authorization", "Bearer " + tokenCentro))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(id))
                 .andExpect(jsonPath("$.municipio").value("La Plata"))
                 .andExpect(jsonPath("$.descripcion").value(response.get("descripcion").asText()));
-        mockMvc.perform(get(URL))
+        mockMvc.perform(get(URL).header("Authorization", "Bearer " + tokenCentro))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[0].id").value(id));
@@ -116,7 +148,8 @@ class EmergenciaIntegrationTests {
         request.put("nivelGravedad", nivelGravedad);
         JsonNode response = registrar(request);
 
-        mockMvc.perform(get(URL + "/" + response.get("id").asLong()))
+        mockMvc.perform(get(URL + "/" + response.get("id").asLong())
+                        .header("Authorization", "Bearer " + tokenCentro))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.tipoDesastre").value(tipoDesastre))
                 .andExpect(jsonPath("$.nivelGravedad").value(nivelGravedad));
@@ -125,13 +158,13 @@ class EmergenciaIntegrationTests {
     @Test
     void aceptaLasLongitudesMaximasSinTruncar() throws Exception {
         ObjectNode request = altaValida();
-        request.put("municipio", "M".repeat(150));
         request.put("zonaAfectada", "Z".repeat(200));
         JsonNode response = registrar(request);
 
-        mockMvc.perform(get(URL + "/" + response.get("id").asLong()))
+        mockMvc.perform(get(URL + "/" + response.get("id").asLong())
+                        .header("Authorization", "Bearer " + tokenCentro))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.municipio").value(request.get("municipio").asText()))
+                .andExpect(jsonPath("$.municipio").value(NOMBRE_MUNICIPIO))
                 .andExpect(jsonPath("$.zonaAfectada").value(request.get("zonaAfectada").asText()));
     }
 
@@ -148,7 +181,7 @@ class EmergenciaIntegrationTests {
     }
 
     static Stream<Arguments> camposObligatorios() {
-        return Stream.of("tipoDesastre", "nivelGravedad", "zonaAfectada", "descripcion", "municipio")
+        return Stream.of("tipoDesastre", "nivelGravedad", "zonaAfectada", "descripcion")
                 .flatMap(campo -> Stream.of(Arguments.of(campo, false), Arguments.of(campo, true)));
     }
 
@@ -161,10 +194,9 @@ class EmergenciaIntegrationTests {
     }
 
     static Stream<Arguments> textosInvalidos() {
-        Stream<Arguments> vacios = Stream.of("municipio", "zonaAfectada", "descripcion")
+        Stream<Arguments> vacios = Stream.of("zonaAfectada", "descripcion")
                 .flatMap(campo -> Stream.of(Arguments.of(campo, ""), Arguments.of(campo, " \t\n ")));
         return Stream.concat(vacios, Stream.of(
-                Arguments.of("municipio", "M".repeat(151)),
                 Arguments.of("zonaAfectada", "Z".repeat(201))
         ));
     }
@@ -176,6 +208,7 @@ class EmergenciaIntegrationTests {
         request.set(campo, objectMapper.readTree(valorJson));
 
         mockMvc.perform(post(URL)
+                        .header("Authorization", "Bearer " + tokenOperador)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
@@ -194,7 +227,9 @@ class EmergenciaIntegrationTests {
     @ParameterizedTest
     @ValueSource(strings = {"", "null", "{", "[]"})
     void rechazaCuerposAusentesOMalformadosSinPersistir(String cuerpo) throws Exception {
-        mockMvc.perform(post(URL).contentType(MediaType.APPLICATION_JSON).content(cuerpo))
+        mockMvc.perform(post(URL)
+                        .header("Authorization", "Bearer " + tokenOperador)
+                        .contentType(MediaType.APPLICATION_JSON).content(cuerpo))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status").value(400))
                 .andExpect(jsonPath("$.path").value(URL));
@@ -203,7 +238,9 @@ class EmergenciaIntegrationTests {
 
     @Test
     void rechazaContenidoNoSoportadoCon415SinPersistir() throws Exception {
-        mockMvc.perform(post(URL).contentType(MediaType.TEXT_PLAIN).content(ALTA_VALIDA))
+        mockMvc.perform(post(URL)
+                        .header("Authorization", "Bearer " + tokenOperador)
+                        .contentType(MediaType.TEXT_PLAIN).content(ALTA_VALIDA))
                 .andExpect(status().isUnsupportedMediaType())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.status").value(415))
@@ -216,6 +253,7 @@ class EmergenciaIntegrationTests {
     @Test
     void rechazaAcceptIncompatibleCon406AntesDeGuardar() throws Exception {
         mockMvc.perform(post(URL)
+                        .header("Authorization", "Bearer " + tokenOperador)
                         .contentType(MediaType.APPLICATION_JSON)
                         .accept(MediaType.APPLICATION_XML)
                         .content(ALTA_VALIDA))
@@ -247,7 +285,8 @@ class EmergenciaIntegrationTests {
         assertThat(nueva.get("bonitaCaseId").isNull()).isTrue();
         assertThat(Instant.parse(nueva.get("createdAt").asText())).isBetween(antesDelAlta, Instant.now());
         assertThat(cantidadEmergencias()).isEqualTo(2);
-        mockMvc.perform(get(URL + "/" + idOriginal))
+        mockMvc.perform(get(URL + "/" + idOriginal)
+                        .header("Authorization", "Bearer " + tokenCentro))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.municipio").value("La Plata"))
                 .andExpect(jsonPath("$.estado").value("REGISTRADA"));
@@ -255,7 +294,8 @@ class EmergenciaIntegrationTests {
 
     @Test
     void devuelve404SiNoExisteLaEmergencia() throws Exception {
-        mockMvc.perform(get(URL + "/" + Long.MAX_VALUE))
+        mockMvc.perform(get(URL + "/" + Long.MAX_VALUE)
+                        .header("Authorization", "Bearer " + tokenCentro))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.status").value(404))
                 .andExpect(jsonPath("$.path").value(URL + "/" + Long.MAX_VALUE));
@@ -263,7 +303,8 @@ class EmergenciaIntegrationTests {
 
     @Test
     void devuelve400SiElIdNoEsNumerico() throws Exception {
-        mockMvc.perform(get(URL + "/invalido"))
+        mockMvc.perform(get(URL + "/invalido")
+                        .header("Authorization", "Bearer " + tokenCentro))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status").value(400))
                 .andExpect(jsonPath("$.path").value(URL + "/invalido"));
@@ -273,6 +314,7 @@ class EmergenciaIntegrationTests {
     void laEmergenciaCreadaPermiteRegistrarLotes() throws Exception {
         long id = registrar(altaValida()).get("id").asLong();
         mockMvc.perform(post(URL + "/" + id + "/lotes")
+                        .header("Authorization", "Bearer " + tokenCentro)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"tipoRecurso":"ALIMENTOS","descripcion":"Raciones de alimento",
@@ -284,7 +326,8 @@ class EmergenciaIntegrationTests {
                 .andExpect(jsonPath("$.estado").value("BORRADOR"));
         assertThat(jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM lotes WHERE emergencia_id = ?", Long.class, id)).isEqualTo(1);
-        mockMvc.perform(get(URL + "/" + id))
+        mockMvc.perform(get(URL + "/" + id)
+                        .header("Authorization", "Bearer " + tokenCentro))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(id));
     }
@@ -304,6 +347,7 @@ class EmergenciaIntegrationTests {
 
     private JsonNode registrar(ObjectNode request) throws Exception {
         MvcResult result = mockMvc.perform(post(URL)
+                                                .header("Authorization", "Bearer " + tokenOperador)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated()).andReturn();
@@ -312,6 +356,7 @@ class EmergenciaIntegrationTests {
 
     private void verificarErrorDeCampo(ObjectNode request, String campo) throws Exception {
         mockMvc.perform(post(URL)
+                                                .header("Authorization", "Bearer " + tokenOperador)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
@@ -326,4 +371,18 @@ class EmergenciaIntegrationTests {
     private long cantidadEmergencias() {
         return jdbcTemplate.queryForObject("SELECT COUNT(*) FROM emergencias", Long.class);
     }
+
+        private void crearUsuario(String email, Rol rol) {
+                jdbcTemplate.update("INSERT INTO usuarios "
+                                                + "(email, password_hash, rol, municipio_id, created_at, updated_at) "
+                                                + "VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
+                                email, "test", rol.name(), municipioId);
+        }
+
+        private String crearToken(String email, Rol rol) {
+                Usuario usuario = new Usuario();
+                usuario.setEmail(email);
+                usuario.setRol(rol);
+                return jwtService.generarToken(usuario);
+        }
 }

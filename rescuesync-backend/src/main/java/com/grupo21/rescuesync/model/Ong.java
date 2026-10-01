@@ -15,7 +15,8 @@ import lombok.ToString;
 @Entity
 @Table(name = "ongs")
 public class Ong extends BaseEntity {
-
+    
+    // Para esta entrega solo hace falta el nombre
     @Column(nullable = false, unique = true, length = 150)
     private String nombre;
 }

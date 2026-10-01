@@ -8,6 +8,7 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -17,25 +18,30 @@ import lombok.ToString;
  * Oferta de ayuda cargada por una ONG para cubrir (total o parcialmente) un {@link Lote}
  * publicado en la convocatoria. Una ONG que quiera cubrir varios lotes carga una
  * Oferta por cada uno.
- *
- * Nota: todavía no hay módulo de autenticación (E2-10), por eso la ONG se identifica
- * por nombre. Cuando exista el login de ONGs, {@code ongNombre} pasará a ser una
- * relación con la entidad Ong/Usuario correspondiente.
  */
 @Getter
 @Setter
-@ToString(exclude = "lote")
+@ToString(exclude = {"lote", "ong"})
 @NoArgsConstructor
 @Entity
-@Table(name = "ofertas")
+@Table(
+    name = "ofertas",
+    uniqueConstraints = {
+        @UniqueConstraint(
+            name = "uk_oferta_ong_lote",
+            columnNames = {"ong_id", "lote_id"}
+        )
+    }
+)
 public class Oferta extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "lote_id", nullable = false)
     private Lote lote;
 
-    @Column(name = "ong_nombre", nullable = false, length = 150)
-    private String ongNombre;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "ong_id", nullable = false)
+    private Ong ong;
 
     @Column(name = "cantidad_ofrecida", nullable = false)
     private Integer cantidadOfrecida;

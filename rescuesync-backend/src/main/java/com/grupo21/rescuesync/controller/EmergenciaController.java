@@ -11,6 +11,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -33,8 +35,11 @@ public class EmergenciaController {
     @PreAuthorize("hasAuthority('REGISTRAR_EMERGENCIA')")
     @ApiResponse(responseCode = "201", description = "Emergencia registrada")
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<EmergenciaResponse> crear(@Valid @RequestBody CrearEmergenciaRequest request) {
-        EmergenciaResponse response = emergenciaService.crear(request);
+    public ResponseEntity<EmergenciaResponse> crear(
+        @Valid @RequestBody CrearEmergenciaRequest request,
+        @AuthenticationPrincipal UserDetails userDetails
+    ) {
+        EmergenciaResponse response = emergenciaService.crear(request, userDetails.getUsername());
 
         return ResponseEntity
                 .created(URI.create("/api/emergencias/" + response.id()))
