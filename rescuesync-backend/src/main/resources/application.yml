@@ -50,3 +50,7 @@ management:
     web:
       exposure:
         include: health,info
+
+jwt:
+  secret: ${JWT_SECRET:yJnBNfTcXCeJ5g614Xj11TQlC47tmjHDKDh67o6nlY3}
+  expiration: ${JWT_EXPIRATION:86400000}
