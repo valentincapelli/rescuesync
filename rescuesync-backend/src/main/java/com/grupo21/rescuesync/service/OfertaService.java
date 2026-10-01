@@ -57,13 +57,7 @@ public class OfertaService {
                 );
         }
 
-        Oferta ofertaExistente =
-                ofertaRepository.findByOngIdAndLoteId(
-                        ong.getId(),
-                        loteId
-                ).getFirst();
-
-        if (ofertaExistente != null) {
+        if (!ofertaRepository.findByOngIdAndLoteId(ong.getId(), loteId).isEmpty()) {
                 throw new BusinessException(
                         "Ya existe una oferta de esta ONG para este lote"
                 );
