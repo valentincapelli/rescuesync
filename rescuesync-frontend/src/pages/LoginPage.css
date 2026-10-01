@@ -266,3 +266,30 @@
     font-size: 1.7rem;
   }
 }
+
+.login-field.has-error input {
+  border-bottom-color: rgb(227, 7, 19);
+}
+
+.login-field.has-error input:focus {
+  box-shadow:
+    0 2px 0 rgb(227, 7, 19);
+}
+
+.login-field-error {
+  color: rgb(227, 7, 19);
+  font-size: 0.78rem;
+  line-height: 1.3;
+}
+
+.login-error {
+  padding: 0.8rem 0;
+
+  border-left: 3px solid rgb(227, 7, 19);
+  padding-left: 0.8rem;
+
+  color: rgb(227, 7, 19);
+
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
