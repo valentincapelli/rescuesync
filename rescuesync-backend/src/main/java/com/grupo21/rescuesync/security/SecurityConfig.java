@@ -59,7 +59,8 @@ public class SecurityConfig {
                                 "/api/bonita/**",
                                 "/api/info/**",
                                 "/swagger-ui/**",
-                                "/v3/api-docs/**"
+                                "/v3/api-docs/**",
+                                "/error"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )

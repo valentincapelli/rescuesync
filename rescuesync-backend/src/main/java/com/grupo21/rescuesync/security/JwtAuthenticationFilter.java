@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -83,6 +84,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         } catch (JwtException | IllegalArgumentException ex) {
             responder401(response, request, "Token inválido");
             return;
+        }  catch (UsernameNotFoundException ex) {
+                responder401(response, request, "Token inválido");
+                return;
         }
 
         filterChain.doFilter(request, response);

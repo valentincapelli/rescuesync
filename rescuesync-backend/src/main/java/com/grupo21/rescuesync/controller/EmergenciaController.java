@@ -56,7 +56,7 @@ public class EmergenciaController {
     @Operation(summary = "Publicar la convocatoria de la emergencia",
             description = "Pasa la emergencia a CONVOCATORIA_PUBLICADA y todos sus lotes a PUBLICADO. "
                     + "409 si no tiene lotes o si ya estaba publicada.")
-    @PreAuthorize("hasAuthority('PUBLICAR_EMERGENCIA')")
+    @PreAuthorize("hasAuthority('PUBLICAR_CONVOCATORIA')")
     @ApiResponse(responseCode = "200", description = "Convocatoria publicada")
     @ApiResponse(responseCode = "409", description = "Sin lotes o convocatoria ya publicada")
     @PostMapping("/{id}/convocatoria")
