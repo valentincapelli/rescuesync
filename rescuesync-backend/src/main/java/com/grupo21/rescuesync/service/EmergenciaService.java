@@ -35,6 +35,7 @@ public class EmergenciaService {
     private final BonitaClient bonitaClient;
     private final BonitaProperties bonitaProperties;
     private final UsuarioRepository usuarioRepository;
+    private final ConvocatoriaProperties convocatoriaProperties;
 
         @Transactional
     public EmergenciaResponse crear(
@@ -55,9 +56,7 @@ public class EmergenciaService {
                         "El usuario no está asociado a un municipio"
                 );
         }
-    private final ConvocatoriaProperties convocatoriaProperties;
 
-    public EmergenciaResponse crear(CrearEmergenciaRequest request) {
         Emergencia emergencia = new Emergencia();
 
         emergencia.setTipoDesastre(request.tipoDesastre());
