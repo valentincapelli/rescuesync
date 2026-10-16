@@ -83,6 +83,5 @@ ongs 1─N recursos 1─N compromisos
 
 ## Pendiente
 
-- Seguridad: login con JWT y roles ADMIN / ONG / SERVICIO (no se agregó Spring Security todavía para que las rutas no queden bloqueadas mientras no hay login).
 - Services y controllers de catálogo, validación, compromiso y liberación.
 - Unidades de medida: hoy texto libre, igual que en los lotes de RescueSync. Ver punto abierto de E3-01.
