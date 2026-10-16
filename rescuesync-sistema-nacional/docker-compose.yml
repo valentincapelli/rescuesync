@@ -1,0 +1,40 @@
+# Sistema Nacional (API en el Cloud) - entorno local
+#
+#   docker compose up -d db          -> solo PostgreSQL (para correr la API desde el IDE)
+#   docker compose up -d --build     -> PostgreSQL + API con el mismo Dockerfile que usa Render
+#
+# Usa el puerto 5434 para no chocar con la base de RescueSync (5433).
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: sistema-nacional-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: sistema_nacional
+      POSTGRES_USER: sistema_nacional
+      POSTGRES_PASSWORD: sistema_nacional
+    ports:
+      - "5434:5432"
+    volumes:
+      - sistema-nacional-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sistema_nacional -d sistema_nacional"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build: .
+    container_name: sistema-nacional-api
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:postgresql://db:5432/sistema_nacional
+      DB_USER: sistema_nacional
+      DB_PASSWORD: sistema_nacional
+    ports:
+      - "8082:8082"
+
+volumes:
+  sistema-nacional-pgdata:

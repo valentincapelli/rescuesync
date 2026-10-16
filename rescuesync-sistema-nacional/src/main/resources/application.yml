@@ -1,0 +1,46 @@
+spring:
+  application:
+    name: rescuesync-sistema-nacional
+
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5434/sistema_nacional}
+    username: ${DB_USER:sistema_nacional}
+    password: ${DB_PASSWORD:sistema_nacional}
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      # update mientras armamos el modelo (E3-02). Pasar a "validate" + migraciones cuando se estabilice.
+      ddl-auto: ${JPA_DDL_AUTO:update}
+    properties:
+      hibernate:
+        format_sql: true
+        jdbc:
+          time_zone: UTC
+    show-sql: ${JPA_SHOW_SQL:false}
+
+  jackson:
+    time-zone: America/Argentina/Buenos_Aires
+    deserialization:
+      # Los enums se reciben por nombre; un número no debe interpretarse como su posición.
+      fail-on-numbers-for-enums: true
+
+server:
+  # 8080 = Bonita, 8081 = backend de RescueSync, 8082 = Sistema Nacional.
+  # Render inyecta PORT; si está definido se usa ese.
+  port: ${SERVER_PORT:${PORT:8082}}
+
+app:
+  version: '@project.version@'
+  cors:
+    allowed-origins: ${CORS_ORIGINS:http://localhost:5173}
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
