@@ -122,6 +122,11 @@ public class GlobalExceptionHandler {
         );
     }
 
+    @ExceptionHandler(ForbiddenException.class)
+    public ResponseEntity<ApiError> handleForbidden(ForbiddenException ex, HttpServletRequest req) {
+        return build(HttpStatus.FORBIDDEN, ex.getMessage(), req);
+    }
+
     private ResponseEntity<ApiError> build(HttpStatus status, String message, HttpServletRequest req) {
         return ResponseEntity.status(status)
                 .contentType(MediaType.APPLICATION_JSON)

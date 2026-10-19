@@ -18,4 +18,7 @@ public interface CompromisoRepository extends JpaRepository<Compromiso, Long> {
     List<Compromiso> findByEmergenciaRefAndOfertaRef(Long emergenciaRef, Long ofertaRef);
 
     List<Compromiso> findByEmergenciaRef(Long emergenciaRef);
+
+    /** Para no borrar un recurso que tiene historial de compromisos. */
+    boolean existsByRecursoId(Long recursoId);
 }

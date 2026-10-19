@@ -18,3 +18,7 @@ app:
   version: test
   cors:
     allowed-origins: http://localhost:5173
+
+jwt:
+  secret: clave-de-prueba-clave-de-prueba-clave-de-prueba-123
+  expiration: 3600000

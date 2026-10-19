@@ -14,6 +14,10 @@ public interface CertificacionRepository extends JpaRepository<Certificacion, Lo
 
     List<Certificacion> findByOngIdOrderByTipoRecurso(Long ongId);
 
+    Optional<Certificacion> findByIdAndOngId(Long id, Long ongId);
+
+    boolean existsByOngIdAndTipoRecurso(Long ongId, TipoRecurso tipoRecurso);
+
     /**
      * Certificación vigente de una ONG (por CUIT) para un tipo de recurso.
      * Base de la validación por niveles de competencia: si no hay, se devuelve capacidad vacía, no un rechazo.

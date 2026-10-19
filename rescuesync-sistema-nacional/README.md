@@ -51,7 +51,7 @@ Todas tienen valor por defecto en `application.yml` (ver `.env.example`).
 ```
 src/main/java/com/grupo21/sistemanacional/
 ├── config/       JPA auditing, Swagger, CORS
-├── controller/   InfoController (los demás llegan con E3-03 en adelante)
+├── controller/   Info, Auth, Ong, Certificacion y Recurso
 ├── dto/          ApiError (mismo formato de error que rescuesync-backend), InfoResponse
 ├── exception/    GlobalExceptionHandler, BusinessException (409), ResourceNotFoundException (404),
 │                 StockInsuficienteException (409 con lo disponible)
@@ -81,7 +81,36 @@ ongs 1─N recursos 1─N compromisos
 
 `RecursoRepository.findAllByIdForUpdate(ids)` hace `SELECT ... FOR UPDATE` ordenado por id, así dos compromisos sobre los mismos recursos los bloquean en el mismo orden y no hay deadlock. Se tiene que llamar dentro de un método `@Transactional`. Después, `Recurso.comprometer(n)` / `Recurso.liberar(n)` cambian el stock sobre la fila ya bloqueada; `cantidadComprometida` no tiene setter a propósito.
 
+## Gestión de ONGs, certificaciones y recursos
+
+Todos los endpoints (salvo el registro) requieren sesión: `POST /api/auth/login` deja el JWT en una cookie, que Swagger UI reenvía sola.
+
+| Método y ruta | Quién | Qué hace |
+|---|---|---|
+| `POST /api/ongs/registro` | público | Crea la ONG (queda `HABILITADA`) y su usuario representante en un solo paso |
+| `GET /api/ongs` | cualquier usuario autenticado | ONGs habilitadas |
+| `GET /api/ongs/{id}` | ADMIN, SERVICIO; una ONG solo la suya | Detalle de una ONG |
+| `GET /api/ongs/{ongId}/certificaciones` | ADMIN, SERVICIO; una ONG solo las suyas | Certificaciones, con `vigente` calculado |
+| `POST /api/ongs/{ongId}/certificaciones` | ADMIN | Certifica a la ONG para un tipo de recurso |
+| `PUT /api/ongs/{ongId}/certificaciones/{id}` | ADMIN | Cambia nivel, riesgo máximo o vencimiento |
+| `DELETE /api/ongs/{ongId}/certificaciones/{id}` | ADMIN | Elimina la certificación |
+| `GET /api/ongs/{ongId}/recursos` | ADMIN, SERVICIO; una ONG solo el suyo | Inventario con total, comprometido y disponible |
+| `POST /api/ongs/{ongId}/recursos` | representante de esa ONG | Agrega un recurso |
+| `PUT /api/ongs/{ongId}/recursos/{id}` | representante de esa ONG | Cambia el stock total |
+| `DELETE /api/ongs/{ongId}/recursos/{id}` | representante de esa ONG | Elimina el recurso |
+| `GET /api/recursos/disponibilidad?tipoRecurso=` | cualquier usuario autenticado | Disponibilidad global de ONGs habilitadas |
+
+Reglas:
+
+- Una ONG nunca ve ni modifica datos de otra (403). Las certificaciones las carga solo el ADMIN: si las cargara la ONG se autocertificaría.
+- `unidadMedida` es texto libre, pero se guarda en minúsculas y sin espacios de más (`" KG "` y `kg` son la misma unidad). Unificarla con RescueSync sigue pendiente.
+- Una certificación vencida no se borra: se informa con `vigente: false`. La fecha de vencimiento, si se manda, no puede ser pasada.
+- Un recurso no puede quedar con total menor a lo comprometido, ni borrarse con unidades comprometidas o con historial de compromisos (409).
+- Las modificaciones de recursos toman `SELECT ... FOR UPDATE` sobre la fila, así no se pisan con un compromiso en curso.
+
+Para probar a mano en Swagger: registrar una ONG, loguearse con ese usuario y cargar recursos; luego loguearse como `admin@sistemanacional.test` (ver el seed) para certificarla.
+
 ## Pendiente
 
-- Services y controllers de catálogo, validación, compromiso y liberación.
+- Validación por niveles de competencia, compromiso y liberación de recursos.
 - Unidades de medida: hoy texto libre, igual que en los lotes de RescueSync. Ver punto abierto de E3-01.

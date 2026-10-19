@@ -63,10 +63,13 @@ public class SecurityConfig {
                                 "/api/auth/login",
                                 "/api/auth/logout",
                                 "/api/info/**",
+                                "/swagger-ui.html",
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**",
                                 "/error"
                         ).permitAll()
+                        // Onboarding de ONGs: público
+                        .requestMatchers(HttpMethod.POST, "/api/ongs/registro").permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(
