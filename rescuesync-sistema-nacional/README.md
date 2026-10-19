@@ -94,6 +94,7 @@ Todos los endpoints (salvo el registro) requieren sesión: `POST /api/auth/login
 | `POST /api/ongs/{ongId}/certificaciones` | ADMIN | Certifica a la ONG para un tipo de recurso |
 | `PUT /api/ongs/{ongId}/certificaciones/{id}` | ADMIN | Cambia nivel, riesgo máximo o vencimiento |
 | `DELETE /api/ongs/{ongId}/certificaciones/{id}` | ADMIN | Elimina la certificación |
+| `POST /api/certificaciones/validar` | ADMIN, SERVICIO | Capacidades certificadas vigentes por CUIT y tipo de recurso (E3-05) |
 | `GET /api/ongs/{ongId}/recursos` | ADMIN, SERVICIO; una ONG solo el suyo | Inventario con total, comprometido y disponible |
 | `POST /api/ongs/{ongId}/recursos` | representante de esa ONG | Agrega un recurso |
 | `PUT /api/ongs/{ongId}/recursos/{id}` | representante de esa ONG | Cambia el stock total |
@@ -110,7 +111,58 @@ Reglas:
 
 Para probar a mano en Swagger: registrar una ONG, loguearse con ese usuario y cargar recursos; luego loguearse como `admin@sistemanacional.test` (ver el seed) para certificarla.
 
+## Validación de certificaciones (E3-05)
+
+`POST /api/certificaciones/validar` permite consultar el perfil certificado de una ONG
+por su CUIT (11 dígitos, sin guiones) y el tipo de recurso de la oferta. Requiere
+sesión de `SERVICIO` (Bonita) o `ADMIN`, con el mismo login JWT que el resto de la API.
+
+```json
+{
+  "cuit": "30700000001",
+  "tipoRecurso": "ALIMENTOS"
+}
+```
+
+Devuelve `200 OK` con las capacidades habilitadas para ese tipo de recurso:
+
+```json
+{
+  "cuit": "30700000001",
+  "tipoRecurso": "ALIMENTOS",
+  "estadoHabilitacion": "HABILITADA",
+  "capacidadesHabilitadas": [
+    {
+      "tipoRecurso": "ALIMENTOS",
+      "nivelCompetencia": "INTERMEDIO",
+      "nivelRiesgoMax": "MEDIO",
+      "fechaVencimiento": null
+    }
+  ],
+  "observaciones": "Se informan el nivel de competencia y el riesgo máximo certificados para el tipo de recurso solicitado"
+}
+```
+
+- Se informan los niveles certificados (`BASICO`, `INTERMEDIO` o `AVANZADO`) y el
+  riesgo máximo permitido, para que la selección pueda considerar tareas principales
+  o de apoyo. Este servicio no decide la adjudicación de una oferta.
+- Solo se informa capacidad si la ONG está `HABILITADA` y la certificación está
+  vigente. La fecha se evalúa en `America/Argentina/Buenos_Aires`: vence al terminar
+  el día indicado; `null` significa que no vence.
+- Si falta certificación vigente para el tipo solicitado, la ONG no está habilitada
+  o el CUIT no está registrado, responde `200` con `capacidadesHabilitadas: []` y el
+  motivo en `observaciones`. Para un CUIT no registrado, `estadoHabilitacion` es `null`.
+- Los datos de entrada inválidos devuelven `400` en formato `ApiError`; sin sesión,
+  `401`; un representante de ONG no tiene acceso a esta operación (`403`).
+- Es una consulta de solo lectura: no modifica certificaciones, ofertas ni stock.
+  El compromiso/liberación de recursos y los conectores de Bonita corresponden a
+  E3-06/07 y E3-09/10.
+
+**Pruebas:** `mvn test` incluye `ValidacionCertificacionApiTests`, con niveles de
+competencia y riesgo, vencimiento, ONGs no habilitadas o inexistentes, aislamiento
+por ONG y tipo de recurso, permisos, datos inválidos y ausencia de cambios en el stock.
+
 ## Pendiente
 
-- Validación por niveles de competencia, compromiso y liberación de recursos.
+- Compromiso y liberación de recursos.
 - Unidades de medida: hoy texto libre, igual que en los lotes de RescueSync. Ver punto abierto de E3-01.
