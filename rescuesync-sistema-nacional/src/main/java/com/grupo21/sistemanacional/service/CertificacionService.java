@@ -1,8 +1,11 @@
 package com.grupo21.sistemanacional.service;
 
 import com.grupo21.sistemanacional.dto.certificaciones.ActualizarCertificacionRequest;
+import com.grupo21.sistemanacional.dto.certificaciones.CapacidadHabilitadaResponse;
 import com.grupo21.sistemanacional.dto.certificaciones.CertificacionResponse;
 import com.grupo21.sistemanacional.dto.certificaciones.CrearCertificacionRequest;
+import com.grupo21.sistemanacional.dto.certificaciones.ValidacionCertificacionResponse;
+import com.grupo21.sistemanacional.dto.certificaciones.ValidarCertificacionRequest;
 import com.grupo21.sistemanacional.exception.BusinessException;
 import com.grupo21.sistemanacional.exception.ResourceNotFoundException;
 import com.grupo21.sistemanacional.model.Certificacion;
@@ -55,6 +58,30 @@ public class CertificacionService {
         return certificacionRepository.findByOngIdOrderByTipoRecurso(ongId).stream()
                 .map(c -> CertificacionResponse.from(c, hoy))
                 .toList();
+    }
+
+    /** E3-05: informa capacidades certificadas, sin modificar ofertas ni reservar recursos. */
+    @Transactional(readOnly = true)
+    public ValidacionCertificacionResponse validar(ValidarCertificacionRequest request) {
+        Ong ong = ongRepository.findByCuit(request.cuit()).orElse(null);
+        if (ong == null) {
+            return new ValidacionCertificacionResponse(request.cuit(), request.tipoRecurso(), null, List.of(),
+                    "No hay una ONG registrada con el CUIT indicado");
+        }
+        if (!ong.isHabilitada()) {
+            return new ValidacionCertificacionResponse(request.cuit(), request.tipoRecurso(),
+                    ong.getEstadoHabilitacion(), List.of(), "La ONG no está habilitada en el Sistema Nacional");
+        }
+
+        List<CapacidadHabilitadaResponse> capacidades = certificacionRepository
+                .findVigente(request.cuit(), request.tipoRecurso(), hoy()).stream()
+                .map(CapacidadHabilitadaResponse::from)
+                .toList();
+        String observaciones = capacidades.isEmpty()
+                ? "La ONG no tiene una certificación vigente para el tipo de recurso solicitado"
+                : "Se informan el nivel de competencia y el riesgo máximo certificados para el tipo de recurso solicitado";
+        return new ValidacionCertificacionResponse(request.cuit(), request.tipoRecurso(),
+                ong.getEstadoHabilitacion(), capacidades, observaciones);
     }
 
     @Transactional
