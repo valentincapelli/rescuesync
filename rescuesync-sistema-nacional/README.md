@@ -110,7 +110,16 @@ Reglas:
 
 Para probar a mano en Swagger: registrar una ONG, loguearse con ese usuario y cargar recursos; luego loguearse como `admin@sistemanacional.test` (ver el seed) para certificarla.
 
+## Liberación de recursos (E3-07)
+
+`POST /api/compromisos/liberar` (ADMIN o SERVICIO) con `{ "emergenciaRef": 12, "ofertaRef": 34 }`. Los ids son los de RescueSync, los mismos que se mandaron al comprometer.
+
+- Con `ofertaRef` libera esa oferta (todas las ONGs de un consorcio). Sin `ofertaRef`, todos los compromisos de la emergencia: es el cierre del proyecto.
+- Todo en una transacción: si un compromiso no se puede liberar, no se libera ninguno (409).
+- Idempotente: un reintento responde 200 con `liberados: 0` y los `yaLiberados`, sin devolver stock dos veces. Si no hay ningún compromiso para esos ids, 404.
+- Concurrencia: primero se bloquean los recursos (`FOR UPDATE`, ordenados por id, igual que al comprometer) y recién después se leen los compromisos, así una liberación simultánea no se cuenta dos veces.
+
 ## Pendiente
 
-- Validación por niveles de competencia, compromiso y liberación de recursos.
+- Validación por niveles de competencia y compromiso de recursos.
 - Unidades de medida: hoy texto libre, igual que en los lotes de RescueSync. Ver punto abierto de E3-01.
