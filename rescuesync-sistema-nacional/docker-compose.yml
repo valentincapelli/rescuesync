@@ -30,7 +30,10 @@ services:
       db:
         condition: service_healthy
     environment:
-      DB_URL: jdbc:postgresql://db:5432/sistema_nacional
+      # Mismas variables que en Render: la URL JDBC se arma en application.yml.
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: sistema_nacional
       DB_USER: sistema_nacional
       DB_PASSWORD: sistema_nacional
     ports:

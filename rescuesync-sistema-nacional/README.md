@@ -12,7 +12,7 @@ docker compose up -d db          # PostgreSQL en localhost:5434
 mvn spring-boot:run              # API en http://localhost:8082
 ```
 
-O todo en Docker, con la misma imagen que se despliega en Render:
+O todo en Docker, con la misma imagen y las mismas variables que en Render:
 
 ```bash
 docker compose up -d --build     # PostgreSQL + API
@@ -36,15 +36,76 @@ Corren contra H2 en memoria (no hace falta PostgreSQL). `ModeloDatosTests` verif
 
 ## Variables de entorno
 
-Todas tienen valor por defecto en `application.yml` (ver `.env.example`).
+Todas tienen valor por defecto en `application.yml`, pensado para desarrollo local (ver `.env.example`). En producción las marcadas como obligatorias **tienen** que venir del entorno.
 
-| Variable | Default | Nota |
-|---|---|---|
-| `DB_URL` | `jdbc:postgresql://localhost:5434/sistema_nacional` | En Render, armar la URL JDBC a partir de los datos de la base (Render da `postgres://...`, no JDBC) |
-| `DB_USER` / `DB_PASSWORD` | `sistema_nacional` | |
-| `SERVER_PORT` | `8082` | Si no está, se usa `PORT` (lo inyecta Render) |
-| `JPA_DDL_AUTO` | `update` | Pasar a `validate` + migraciones cuando el modelo se estabilice |
-| `CORS_ORIGINS` | `http://localhost:5173` | Solo si el onboarding de ONGs se hace desde un frontend |
+| Variable | Default (local) | En Render | Nota |
+|---|---|---|---|
+| `DB_HOST` / `DB_PORT` / `DB_NAME` | `localhost` / `5434` / `sistema_nacional` | **Obligatorias** (`fromDatabase`) | Con ellas se arma `jdbc:postgresql://HOST:PORT/NAME`. Render no da una URL JDBC sino `postgres://...` o los datos sueltos |
+| `DB_USER` / `DB_PASSWORD` | `sistema_nacional` | **Obligatorias** (`fromDatabase`) | |
+| `DB_SSLMODE` | `prefer` | Opcional | `prefer` usa SSL si el servidor lo ofrece. Por la red interna de Render no hace falta; poner `require` si se conecta a una base externa |
+| `DB_URL` | (vacía) | No se usa | Si está, pisa a `DB_HOST`/`DB_PORT`/`DB_NAME`/`DB_SSLMODE` |
+| `JWT_SECRET` | valor de desarrollo escrito en el repo | **Obligatoria** (`generateValue`) | Mínimo 32 caracteres. El default es público: nunca usarlo fuera de local |
+| `COOKIE_SECURE` | `false` | **`true`** | Cookie `access_token` con flag `Secure` (solo viaja por HTTPS). En local va `false` porque se usa http |
+| `JWT_EXPIRATION` | `86400000` (24 h) | Opcional | En milisegundos |
+| `SERVER_PORT` | `8082` | No se usa | Si no está, se usa `PORT`, que inyecta Render |
+| `JPA_DDL_AUTO` | `update` | `update` | Deuda: pasar a `validate` + migraciones cuando el modelo se estabilice |
+| `CORS_ORIGINS` | `http://localhost:5173` | Opcional | Solo si un frontend llama a la API desde el navegador. Bonita llama servidor a servidor y no lo necesita |
+| `JAVA_TOOL_OPTIONS` | `-XX:MaxRAMPercentage=75 -XX:+ExitOnOutOfMemoryError` (en la imagen) | Opcional | Flags de la JVM; se pisan sin reconstruir la imagen |
+
+## Despliegue en Render
+
+La API se despliega como **web service Docker** con una **base PostgreSQL** de Render, ambos en plan free, definidos en el Blueprint [`render.yaml`](render.yaml).
+
+### 1. Crear el Blueprint
+
+1. En Render: **New > Blueprint** y elegir el repo `rescuesync`.
+2. En **Blueprint Path** poner `rescuesync-sistema-nacional/render.yaml`. El archivo no está en la raíz del repo: si se deja el valor por defecto, Render dice que no lo encuentra.
+3. Elegir la rama a desplegar (por defecto, la principal del repo).
+4. Render pide un valor para `CORS_ORIGINS`: dejarlo vacío salvo que algún frontend desplegado llame a la API (en ese caso, su URL, sin `/` final).
+5. **Apply**. Render crea la base `sistema-nacional-db` y el servicio `rescuesync-sistema-nacional`, genera `JWT_SECRET` y conecta todo por la red interna.
+
+Las rutas del Blueprint (`dockerfilePath`, `dockerContext`) son relativas a la raíz del repo, por eso apuntan a `./rescuesync-sistema-nacional/...`. El `buildFilter` hace que solo se redespliegue cuando cambia esta carpeta.
+
+### 2. Verificar el deploy
+
+Con la URL pública del servicio (`https://<servicio>.onrender.com`):
+
+| URL | Esperado |
+|---|---|
+| `/actuator/health` | `200` con `{"status":"UP"}` (es el health check que usa Render) |
+| `/api/info` | `200` con la versión y `"status":"UP"` |
+| `/swagger-ui.html` | Swagger UI. Loguearse con `POST /api/auth/login`: la cookie llega con `Secure` y Swagger la reenvía sola |
+
+### 3. Cargar el seed de demo
+
+El seed **no** se ejecuta al arrancar; se carga a mano una sola vez, sobre la base vacía, **después** del primer deploy (con `JPA_DDL_AUTO=update` es la API la que crea las tablas).
+
+1. En el panel de la base (`sistema-nacional-db`) > **Connect**, copiar la **External Database URL** (`postgresql://usuario:clave@host.virginia-postgres.render.com/sistema_nacional`).
+2. Desde la raíz del repo:
+
+   ```bash
+   psql "<External Database URL>" -f scripts/seed-sistema-nacional-demo.sql
+   ```
+
+   Sin `psql` instalado, se puede usar el de Docker:
+
+   ```bash
+   docker run --rm -i postgres:16-alpine psql "<External Database URL>" < scripts/seed-sistema-nacional-demo.sql
+   ```
+
+3. La consulta final del script lista los 5 usuarios creados.
+
+Las credenciales del seed (contraseña `123456` para todos, incluido el ADMIN) son **solo para la demo** de la cátedra: no usarlas con datos reales.
+
+### Plan free: tener en cuenta
+
+- **El servicio se duerme** tras ~15 minutos sin tráfico. El primer request después tarda **~30-60 s** mientras arranca: el conector de Bonita tiene que tener un timeout mayor (o hacer un request de "despertar" antes, por ejemplo a `/actuator/health`).
+- La base free de Render **vence a los 30 días** de creada; después hay que recrearla (y volver a cargar el seed) o pasarla a un plan pago.
+- 512 MB de RAM: la JVM usa como máximo el 75 % para el heap (`-XX:MaxRAMPercentage=75`). Si Render reinicia el servicio por memoria, bajarlo con `JAVA_TOOL_OPTIONS`.
+
+### Deuda: esquema sin migraciones
+
+Hoy el esquema lo crea Hibernate con `JPA_DDL_AUTO=update`. Sirve para el primer despliegue, pero `update` no borra columnas ni restricciones viejas, no renombra y no deja historial. Cuando el modelo se estabilice: agregar migraciones (Flyway) y pasar a `validate`.
 
 ## Estructura
 

@@ -31,6 +31,9 @@ public class AuthController {
     @Value("${jwt.expiration}")
     private long jwtExpiration;
 
+    @Value("${app.auth.cookie-secure}")
+    private boolean cookieSecure;
+
     @Operation(summary = "Iniciar sesión y obtener un token JWT")
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> login(
@@ -41,7 +44,7 @@ public class AuthController {
         ResponseCookie cookie = ResponseCookie
                 .from("access_token", result.token())
                 .httpOnly(true)
-                .secure(false)
+                .secure(cookieSecure)
                 .sameSite("Lax")
                 .path("/")
                 .maxAge(Duration.ofMillis(jwtExpiration))
@@ -65,7 +68,7 @@ public class AuthController {
         ResponseCookie cookie = ResponseCookie
                 .from("access_token", "")
                 .httpOnly(true)
-                .secure(false)
+                .secure(cookieSecure)
                 .sameSite("Lax")
                 .path("/")
                 .maxAge(0)

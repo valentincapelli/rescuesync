@@ -16,6 +16,8 @@ spring:
 
 app:
   version: test
+  auth:
+    cookie-secure: false
   cors:
     allowed-origins: http://localhost:5173
 
