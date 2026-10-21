@@ -25,6 +25,9 @@ public enum Rol {
             Permiso.CONSULTAR_OFERTAS,
             Permiso.CONSULTAR_LOTES,
             Permiso.CONSULTAR_EMERGENCIAS
+    ),
+    SERVICIO_BONITA(
+            Permiso.CONSULTAR_OFERTAS_CONSOLIDADAS
     );
 
     private final Set<Permiso> permisos;

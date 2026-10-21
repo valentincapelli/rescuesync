@@ -3,6 +3,8 @@ package com.grupo21.rescuesync.service;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.Map;
+import java.util.List;
+import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -12,6 +14,9 @@ import com.grupo21.rescuesync.config.BonitaProperties;
 import com.grupo21.rescuesync.config.ConvocatoriaProperties;
 import com.grupo21.rescuesync.dto.CrearEmergenciaRequest;
 import com.grupo21.rescuesync.dto.EmergenciaResponse;
+import com.grupo21.rescuesync.dto.LoteOfertasConsolidadasResponse;
+import com.grupo21.rescuesync.dto.OfertaConsolidadaResponse;
+import com.grupo21.rescuesync.dto.OngResumenResponse;
 import com.grupo21.rescuesync.exception.BonitaIntegrationException;
 import com.grupo21.rescuesync.exception.BusinessException;
 import com.grupo21.rescuesync.exception.ResourceNotFoundException;
@@ -20,9 +25,11 @@ import com.grupo21.rescuesync.model.EstadoEmergencia;
 import com.grupo21.rescuesync.model.EstadoLote;
 import com.grupo21.rescuesync.model.Lote;
 import com.grupo21.rescuesync.model.Municipio;
+import com.grupo21.rescuesync.model.Oferta;
 import com.grupo21.rescuesync.model.Usuario;
 import com.grupo21.rescuesync.repository.EmergenciaRepository;
 import com.grupo21.rescuesync.repository.LoteRepository;
+import com.grupo21.rescuesync.repository.OfertaRepository;
 import com.grupo21.rescuesync.repository.UsuarioRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -35,6 +42,7 @@ public class EmergenciaService {
 
     private final EmergenciaRepository emergenciaRepository;
     private final LoteRepository loteRepository;
+    private final OfertaRepository ofertaRepository;
     private final BonitaClient bonitaClient;
     private final BonitaProperties bonitaProperties;
     private final UsuarioRepository usuarioRepository;
@@ -127,6 +135,35 @@ public class EmergenciaService {
         return emergenciaRepository.findAll().stream()
                 .map(this::toResponse)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<LoteOfertasConsolidadasResponse> ofertasConsolidadas(Long emergenciaId) {
+        if (!emergenciaRepository.existsById(emergenciaId)) {
+            throw new ResourceNotFoundException("Emergencia", emergenciaId);
+        }
+
+        List<Lote> lotes = loteRepository.findByEmergenciaIdOrderByIdAsc(emergenciaId);
+        Map<Long, List<Oferta>> ofertasPorLote = ofertaRepository.findConOngByEmergenciaId(emergenciaId)
+                .stream()
+                .collect(Collectors.groupingBy(oferta -> oferta.getLote().getId()));
+
+        return lotes.stream().map(lote -> {
+            List<Oferta> ofertas = ofertasPorLote.getOrDefault(lote.getId(), List.of());
+            List<OfertaConsolidadaResponse> respuestas = ofertas.stream()
+                    .map(oferta -> new OfertaConsolidadaResponse(
+                            oferta.getId(),
+                            new OngResumenResponse(oferta.getOng().getId(), oferta.getOng().getNombre()),
+                            oferta.getCantidadOfrecida(),
+                            oferta.getObservaciones(),
+                            oferta.getEstado()))
+                    .toList();
+
+            return new LoteOfertasConsolidadasResponse(
+                    lote.getId(), lote.getTipoRecurso(), lote.getDescripcion(),
+                    lote.getCantidadRequerida(), lote.getUnidadMedida(), lote.getEstado(),
+                    ofertas.stream().mapToLong(Oferta::getCantidadOfrecida).sum(), respuestas);
+        }).toList();
     }
 
     /**

@@ -47,6 +47,41 @@ Backend de la aplicación web de RescueSync (DSSD 2026 – Grupo 21).
 Todo está en `src/main/resources/application.yml` y se puede pisar con variables de entorno (ver `.env.example`):
 `DB_URL`, `DB_USER`, `DB_PASSWORD`, `SERVER_PORT`, `CORS_ORIGINS`, `BONITA_URL`, `BONITA_USER`, `BONITA_PASSWORD`, `BONITA_PROCESS`, `JPA_DDL_AUTO`, `JPA_SHOW_SQL`.
 
+### Cuenta técnica de Bonita para consultar ofertas consolidadas
+
+Configurar `RESCUESYNC_BONITA_SERVICE_EMAIL` (una dirección de email exclusiva) y
+`RESCUESYNC_BONITA_SERVICE_PASSWORD` en el entorno del backend antes de iniciarlo.
+Las dos variables son opcionales en conjunto; si se configura solo una, el backend
+no inicia. Al iniciar, crea la cuenta `SERVICIO_BONITA` sin Municipio ni ONG, o
+actualiza su hash BCrypt si cambió la contraseña. Nunca convierte una cuenta de
+otro rol en cuenta técnica. No guardar la contraseña en el repositorio.
+
+Bonita debe usar el login existente `POST /api/auth/login` con esas credenciales y
+reenviar la cookie `access_token` al consultar
+`GET /api/emergencias/{emergenciaId}/ofertas-consolidadas`. La cuenta técnica solo
+tiene permiso para esa consulta; no se usa `BONITA_USER`/`BONITA_PASSWORD`, que
+autentican al backend ante Bonita en el sentido inverso.
+
+#### Actualización de la restricción de roles en PostgreSQL
+
+La base existente puede tener `usuarios_rol_check` con solo los tres roles
+anteriores. `ddl-auto=update` no amplía esa restricción al agregar
+`SERVICIO_BONITA`. En una base PostgreSQL ya creada, antes de iniciar el backend
+con las credenciales técnicas, aplicar el script desde la raíz del repositorio usando una
+cuenta de base de datos con permiso para alterar `usuarios`:
+
+```bash
+psql -h localhost -p 5433 -U rescuesync -d rescuesync \
+  -v ON_ERROR_STOP=1 \
+  -f scripts/usuarios_servicio_bonita.sql
+```
+
+`psql` solicitará la contraseña si no está configurada mediante el entorno.
+El script conserva los roles anteriores, agrega `SERVICIO_BONITA` y valida la
+nueva restricción sin eliminar usuarios. Se puede volver a ejecutar. Cambiar
+el nombre del archivo no altera las bases existentes: el script debe ejecutarse
+en cada una de ellas. Para otra base, ajustar los parámetros de conexión de `psql`.
+
 ## Estructura (por capas)
 
 ```
