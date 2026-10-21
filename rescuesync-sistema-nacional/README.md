@@ -232,7 +232,14 @@ por ONG y tipo de recurso, permisos, datos inválidos y ausencia de cambios en e
 - Idempotente: un reintento responde 200 con `liberados: 0` y los `yaLiberados`, sin devolver stock dos veces. Si no hay ningún compromiso para esos ids, 404.
 - Concurrencia: primero se bloquean los recursos (`FOR UPDATE`, ordenados por id, igual que al comprometer) y recién después se leen los compromisos, así una liberación simultánea no se cuenta dos veces.
 
+## Compromiso de recursos (E3-06)
+
+`POST /api/compromisos` (SERVICIO) recibe `{ "recursoId": 5, "emergenciaRef": 12, "ofertaRef": 34, "cantidad": 2 }`. Los identificadores de emergencia y oferta son los de RescueSync, y deben coincidir con los enviados luego a liberación.
+
+- Reserva el stock disponible dentro de una transacción y bloquea el recurso con `FOR UPDATE`; si no alcanza el stock, responde 409 sin crear el compromiso.
+- Es idempotente por recurso y oferta: si ya existe esa combinación, devuelve el compromiso existente sin reservar stock otra vez, aunque el payload del reintento difiera.
+- La liberación por oferta o emergencia consume estos mismos identificadores y devuelve el stock una sola vez.
+
 ## Pendiente
 
-- Compromiso de recursos (E3-06).
 - Unidades de medida: hoy texto libre, igual que en los lotes de RescueSync. Ver punto abierto de E3-01.
