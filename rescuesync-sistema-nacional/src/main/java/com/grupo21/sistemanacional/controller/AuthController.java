@@ -6,6 +6,12 @@ import com.grupo21.sistemanacional.model.AuthResult;
 import com.grupo21.sistemanacional.service.AuthService;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.headers.Header;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -34,10 +40,28 @@ public class AuthController {
     @Value("${app.auth.cookie-secure}")
     private boolean cookieSecure;
 
-    @Operation(summary = "Iniciar sesión y obtener un token JWT")
+    @Operation(summary = "Iniciar sesión y obtener un token JWT",
+            description = "Valida usuario y contraseña. El JWT **no** viaja en el cuerpo: se entrega en la cookie "
+                    + "`access_token` (HttpOnly, SameSite=Lax), que hay que reenviar en las demás llamadas. "
+                    + "El cuerpo devuelve solo el usuario y su rol. Bonita debe conservar la cookie del `Set-Cookie` "
+                    + "y enviarla en cada petición.")
+    @SecurityRequirements
+    @ApiResponse(responseCode = "200", description = "Sesión iniciada. La cookie `access_token` llega en el header `Set-Cookie`.",
+            headers = @Header(name = "Set-Cookie", description = "access_token=<jwt>; Path=/; HttpOnly; SameSite=Lax "
+                    + "(más Secure cuando COOKIE_SECURE=true, como en Render)", schema = @Schema(type = "string")),
+            content = @Content(mediaType = "application/json",
+                    schema = @Schema(implementation = LoginResponse.class),
+                    examples = @ExampleObject(value = "{\"username\": \"bonita\", \"rol\": \"SERVICIO\"}")))
+    @ApiResponse(responseCode = "401", description = "Usuario o contraseña incorrectos.",
+            content = @Content(mediaType = "application/json",
+                    schema = @Schema(ref = "#/components/schemas/ApiError")))
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> login(
-            @Valid @RequestBody LoginRequest request
+            @Valid
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    content = @Content(mediaType = "application/json",
+                            examples = @ExampleObject(value = "{\"username\": \"bonita\", \"password\": \"secreto123\"}")))
+            @RequestBody LoginRequest request
     ) {
         AuthResult result = authService.login(request);
 
@@ -61,7 +85,12 @@ public class AuthController {
                 .body(response);
     }
 
-    @Operation(summary = "Cerrar sesión y eliminar el token JWT")
+    @Operation(summary = "Cerrar sesión y eliminar el token JWT",
+            description = "Vence la cookie `access_token`. Es idempotente: también responde 204 sin sesión.")
+    @SecurityRequirements
+    @ApiResponse(responseCode = "204", description = "Cookie eliminada.",
+            headers = @Header(name = "Set-Cookie", description = "access_token vacío con Max-Age=0",
+                    schema = @Schema(type = "string")))
     @PostMapping("/logout")
     public ResponseEntity<Void> logout() {
 
@@ -80,7 +109,8 @@ public class AuthController {
                 .build();
     }
 
-    @Operation(summary = "Obtener información del usuario autenticado")
+    @Operation(summary = "Obtener información del usuario autenticado",
+            description = "Devuelve el usuario y el rol de la sesión actual. Sirve para comprobar que la cookie sigue vigente.")
     @GetMapping("/me")
     public ResponseEntity<LoginResponse> me(
             @AuthenticationPrincipal UserDetails userDetails
