@@ -7,6 +7,10 @@
 | `rescuesync-sistema-nacional/` | API del Sistema Nacional (Cloud) que consume Bonita, con su propia base (ver su README) |
 | `docker-compose.yml` | PostgreSQL local para desarrollo |
 
+## Integración E3-08 / E3-09
+
+La [guía de entrega y continuidad](docs/e3-08-e3-09-continuidad.md) describe el endpoint de ofertas consolidadas, el conector de Bonita, la configuración segura, las pruebas y la exportación actualizada del proceso.
+
 ## Cómo levantar todo
 
 ```bash
