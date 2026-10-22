@@ -153,7 +153,8 @@ public class EmergenciaService {
             List<OfertaConsolidadaResponse> respuestas = ofertas.stream()
                     .map(oferta -> new OfertaConsolidadaResponse(
                             oferta.getId(),
-                            new OngResumenResponse(oferta.getOng().getId(), oferta.getOng().getNombre()),
+                            new OngResumenResponse(oferta.getOng().getId(), oferta.getOng().getNombre(),
+                                    oferta.getOng().getCuit()),
                             oferta.getCantidadOfrecida(),
                             oferta.getObservaciones(),
                             oferta.getEstado()))

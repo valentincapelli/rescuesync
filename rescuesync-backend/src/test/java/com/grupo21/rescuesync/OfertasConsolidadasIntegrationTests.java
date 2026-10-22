@@ -41,6 +41,8 @@ class OfertasConsolidadasIntegrationTests {
         municipioId = ultimoId("municipios");
         primeraOngId = crearOng("ONG Norte");
         segundaOngId = crearOng("ONG Sur");
+        jdbcTemplate.update("UPDATE ongs SET cuit = ? WHERE id = ?", "30500000001", primeraOngId);
+        jdbcTemplate.update("UPDATE ongs SET cuit = ? WHERE id = ?", "30500000002", segundaOngId);
 
         crearUsuario("centro-consolidado@test.local", Rol.CENTRO_COORDINADOR);
         crearUsuario("operador-consolidado@test.local", Rol.OPERADOR_MUNICIPAL);
@@ -91,11 +93,13 @@ class OfertasConsolidadasIntegrationTests {
                 .andExpect(jsonPath("$[0].ofertas[0].id").value(primeraOferta))
                 .andExpect(jsonPath("$[0].ofertas[0].ong.id").value(primeraOngId))
                 .andExpect(jsonPath("$[0].ofertas[0].ong.nombre").value("ONG Norte"))
+                .andExpect(jsonPath("$[0].ofertas[0].ong.cuit").value("30500000001"))
                 .andExpect(jsonPath("$[0].ofertas[0].cantidadOfrecida").value(30))
                 .andExpect(jsonPath("$[0].ofertas[0].observaciones").value("Entrega hoy"))
                 .andExpect(jsonPath("$[0].ofertas[0].estado").value("PENDIENTE"))
                 .andExpect(jsonPath("$[0].ofertas[1].id").value(segundaOferta))
                 .andExpect(jsonPath("$[0].ofertas[1].ong.nombre").value("ONG Sur"))
+                .andExpect(jsonPath("$[0].ofertas[1].ong.cuit").value("30500000002"))
                 .andExpect(jsonPath("$[0].ofertas[1].estado").value("EVALUADA"))
                 .andExpect(jsonPath("$[1].id").value(segundoLote))
                 .andExpect(jsonPath("$[1].totalOfrecido").value(10))
@@ -103,6 +107,18 @@ class OfertasConsolidadasIntegrationTests {
                 .andExpect(jsonPath("$[2].id").value(tercerLote))
                 .andExpect(jsonPath("$[2].totalOfrecido").value(0))
                 .andExpect(jsonPath("$[2].ofertas.length()").value(0));
+    }
+
+    @Test
+    void unaOngAnteriorSinCuitNoSeIdentificaPorNombreNiPorId() throws Exception {
+        jdbcTemplate.update("UPDATE ongs SET cuit = NULL WHERE id = ?", primeraOngId);
+        long emergenciaId = crearEmergencia();
+        long loteId = crearLote(emergenciaId, "ALIMENTOS", "Alimentos", 10, "kg");
+        crearOferta(loteId, primeraOngId, 5, null, "PENDIENTE");
+
+        mockMvc.perform(get(ruta(emergenciaId)).cookie(new Cookie("access_token", tokenCentro)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].ofertas[0].ong.cuit").value(org.hamcrest.Matchers.nullValue()));
     }
 
     @Test

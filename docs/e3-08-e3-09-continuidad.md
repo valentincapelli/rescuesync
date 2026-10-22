@@ -1,5 +1,7 @@
 # Entrega y continuidad de E3-08 / E3-09
 
+**Actualización E3-10:** esta guía registra la entrega de 1.1. El BOS raíz ahora contiene `RescueSync` 1.2 con la integración nacional descrita en la [guía E3-10](e3-10-sistema-nacional.md); conserva el conector E3-09. La verificación byte por byte con el workspace y el caso manual 2001 de abajo corresponden a la exportación anterior.
+
 Estado revisado el 21/10/2026. La prueba manual informada en Bonita, caso 2001, fue exitosa: venció el timer, se ejecutó `consultarOfertasConsolidadas`, se guardó el JSON en `ofertasConsolidadasJson` y quedó disponible la tarea humana. El `rescue-sync.bos` incluido contiene esa configuración.
 
 El módulo `bonita-ofertas-consolidadas-connector/` está incluido para que el equipo pueda reconstruir e instalar el conector.
@@ -13,7 +15,7 @@ El módulo `bonita-ofertas-consolidadas-connector/` está incluido para que el e
 | Conector E3-09 | `bonita-ofertas-consolidadas-connector/`: hace login técnico, conserva la cookie `access_token` sólo en memoria durante la ejecución y consulta E3-08. Entrega exclusivamente un `String` JSON. |
 | Proceso Bonita | En el proyecto actualizado de Studio, `RescueSync` 1.1: el timer `Periodo convocatorio` lleva a `Evaluar cobertura de lotes`; al entrar en esa tarea corre `consultarOfertasConsolidadas`. |
 
-El JSON es un array. Cada lote contiene `id`, `tipoRecurso`, `descripcion`, `cantidadRequerida`, `unidadMedida`, `estado`, `totalOfrecido` y `ofertas`. Cada oferta contiene `id`, `ong: {id, nombre}`, `cantidadOfrecida`, `observaciones` y `estado`. Un lote sin ofertas tiene `ofertas: []` y `totalOfrecido: 0`. Una emergencia inexistente devuelve 404.
+El JSON es un array. Cada lote contiene `id`, `tipoRecurso`, `descripcion`, `cantidadRequerida`, `unidadMedida`, `estado`, `totalOfrecido` y `ofertas`. Cada oferta contiene `id`, `ong: {id, nombre, cuit}`, `cantidadOfrecida`, `observaciones` y `estado` (`cuit` se agregó en E3-10). Un lote sin ofertas tiene `ofertas: []` y `totalOfrecido: 0`. Una emergencia inexistente devuelve 404.
 
 ## Requisitos y arranque
 
@@ -87,7 +89,7 @@ La prueba manual del caso 2001 fue informada como exitosa; la ejecución no se r
 
 `ofertasConsolidadasJson` queda disponible como variable de proceso de tipo `String` después del conector de entrada, asociada a la instancia que ya conserva `emergenciaId`. Para procesarla, parsear el array y correlacionar `id` de lote y de oferta con esa emergencia; no tratar los totales como reservas confirmadas. El conector sólo lee RescueSync y no modifica el Sistema Nacional.
 
-El diagrama actualizado ya dibuja en la lane **Sistema Nacional** las Service Tasks `Evaluar ofertas`, `Comprometer recursos` y `Liberar recursos`; no tienen conectores configurados en el diagrama inspeccionado. Son puntos posibles de extensión, sujetos a definir qué datos necesita cada paso, cómo se mapean las identidades entre sistemas, la autenticación técnica independiente de E3-03/E3-10, idempotencia y tratamiento de errores. Consultar el README y el código actuales de `rescuesync-sistema-nacional` antes de elegir contratos o endpoints; este documento no presupone nuevas operaciones.
+En la entrega original 1.1, las Service Tasks `Evaluar ofertas`, `Comprometer recursos` y `Liberar recursos` estaban dibujadas en la lane **Sistema Nacional** sin conectores. E3-10 configura ahora esos tres puntos en 1.2; consultar la [guía E3-10](e3-10-sistema-nacional.md) para sus contratos, identificación por CUIT, autenticación nacional e idempotencia.
 
 ## Verificación de esta preparación
 

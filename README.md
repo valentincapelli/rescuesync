@@ -5,11 +5,17 @@
 | `rescuesync-backend/` | API REST en Java 21 + Spring Boot (ver su README) |
 | `rescuesync-frontend/` | App React 18 + TypeScript + Vite (ver su README) |
 | `rescuesync-sistema-nacional/` | API del Sistema Nacional (Cloud) que consume Bonita, con su propia base (ver su README) |
+| `bonita-ofertas-consolidadas-connector/` | Conector de Bonita para recuperar las ofertas de RescueSync (E3-09) |
+| `bonita-sistema-nacional-connector/` | Conector de Bonita para evaluar ofertas, comprometer y liberar recursos nacionales (E3-10) |
 | `docker-compose.yml` | PostgreSQL local para desarrollo |
 
 ## Integración E3-08 / E3-09
 
 La [guía de entrega y continuidad](docs/e3-08-e3-09-continuidad.md) describe el endpoint de ofertas consolidadas, el conector de Bonita, la configuración segura, las pruebas y la exportación actualizada del proceso.
+
+## Integración E3-10
+
+La [guía de integración con el Sistema Nacional](docs/e3-10-sistema-nacional.md) explica la identificación por CUIT, las credenciales técnicas, el proceso `RescueSync` 1.2 incluido en `rescue-sync.bos` y cómo probar la evaluación, el compromiso y la liberación de recursos.
 
 ## Cómo levantar todo
 

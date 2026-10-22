@@ -41,11 +41,12 @@ VALUES
 INSERT INTO ongs (
     created_at,
     updated_at,
-    nombre
+    nombre,
+    cuit
 )
 VALUES
-    (CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'Cruz Roja Argentina'),
-    (CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'Caritas Argentina');
+    (CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'Cruz Roja Argentina', '30500000001'),
+    (CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'Caritas Argentina', '30500000002');
 
 
 -- --------------------------------------------
