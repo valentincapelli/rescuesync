@@ -1,7 +1,14 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { TIPO_DESASTRE_LABELS, TIPOS_DESASTRE, type TipoDesastre } from '../../types/emergencia';
 import type { FiltroIndicadores } from '../../types/indicadores';
 import { TIPO_RECURSO_LABELS, TIPOS_RECURSO, type TipoRecurso } from '../../types/lote';
+import type { Municipio } from '../../types/municipio';
+import { fuenteIndicadores } from './fuenteDatos';
+
+type EstadoMunicipios =
+  | { tipo: 'cargando' }
+  | { tipo: 'listo'; municipios: Municipio[] }
+  | { tipo: 'error' };
 
 interface Props {
   aplicado: FiltroIndicadores;
@@ -30,6 +37,18 @@ function aBorrador(f: FiltroIndicadores): Borrador {
 export function FiltrosIndicadores({ aplicado, onAplicar }: Props) {
   const [borrador, setBorrador] = useState<Borrador>(() => aBorrador(aplicado));
   const [error, setError] = useState<string | null>(null);
+  const [municipios, setMunicipios] = useState<EstadoMunicipios>({ tipo: 'cargando' });
+
+  useEffect(() => {
+    let vigente = true;
+    fuenteIndicadores
+      .municipios()
+      .then((lista) => vigente && setMunicipios({ tipo: 'listo', municipios: lista }))
+      .catch(() => vigente && setMunicipios({ tipo: 'error' }));
+    return () => {
+      vigente = false;
+    };
+  }, []);
 
   function cambiar<K extends keyof Borrador>(campo: K, valor: Borrador[K]) {
     setBorrador((prev) => ({ ...prev, [campo]: valor }));
@@ -42,14 +61,7 @@ export function FiltrosIndicadores({ aplicado, onAplicar }: Props) {
       setError('La fecha "desde" no puede ser posterior a "hasta".');
       return;
     }
-    let municipioId: number | undefined;
-    if (borrador.municipioId.trim() !== '') {
-      municipioId = Number(borrador.municipioId);
-      if (!Number.isInteger(municipioId) || municipioId <= 0) {
-        setError('El id de municipio tiene que ser un número entero positivo.');
-        return;
-      }
-    }
+    const municipioId = borrador.municipioId !== '' ? Number(borrador.municipioId) : undefined;
     const filtro: FiltroIndicadores = {};
     if (borrador.desde) filtro.desde = borrador.desde;
     if (borrador.hasta) filtro.hasta = borrador.hasta;
@@ -107,18 +119,28 @@ export function FiltrosIndicadores({ aplicado, onAplicar }: Props) {
             ))}
           </select>
         </div>
-        <div className="form-field ind-campo-angosto">
-          <label htmlFor="ind-municipio">Municipio (id)</label>
-          <input
+        <div className="form-field">
+          <label htmlFor="ind-municipio">Municipio</label>
+          <select
             id="ind-municipio"
-            type="number"
-            min={1}
-            step={1}
-            inputMode="numeric"
-            placeholder="Todos"
             value={borrador.municipioId}
             onChange={(e) => cambiar('municipioId', e.target.value)}
-          />
+            disabled={municipios.tipo !== 'listo'}
+            aria-describedby={municipios.tipo === 'error' ? 'ind-municipio-error' : undefined}
+          >
+            <option value="">{municipios.tipo === 'cargando' ? 'Cargando…' : 'Todos'}</option>
+            {municipios.tipo === 'listo' &&
+              municipios.municipios.map((m) => (
+                <option key={m.id} value={String(m.id)}>
+                  {m.nombre}
+                </option>
+              ))}
+          </select>
+          {municipios.tipo === 'error' && (
+            <span id="ind-municipio-error" className="muted ind-nota">
+              No se pudo cargar la lista de municipios.
+            </span>
+          )}
         </div>
         <div className="form-actions ind-filtros-botones">
           <button type="submit">Aplicar</button>

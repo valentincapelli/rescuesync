@@ -99,8 +99,9 @@ VITE_INDICADORES_MOCK=true npm run dev
 
 (o `VITE_INDICADORES_MOCK=true` en `.env`). Con esa variable, los datos salen de
 `src/mocks/indicadores.ts` en vez de la API; el login sigue necesitando el backend. En modo
-simulado, el filtro **Municipio (id)** acepta dos valores especiales: `900` simula Bonita no
-disponible y `901` simula un error en el bloque de consorcios. La exportación simulada genera
+simulado, el filtro **Municipio** trae al final dos opciones especiales: "(prueba) Bonita no
+disponible" y "(prueba) Error en consorcios", para ver esos estados de la pantalla. Con el backend
+real, la lista sale de `GET /api/municipios`. La exportación simulada genera
 JSON y un CSV reducido; Excel solo se genera con el backend.
 
 ## Configuración

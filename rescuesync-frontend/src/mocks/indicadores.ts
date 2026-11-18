@@ -4,7 +4,8 @@
 // aproximada: fechas y tipo de recurso en suministros/consorcios; fechas, municipio y tipo
 // de desastre en proyectos.
 //
-// Valores especiales de municipioId para probar estados de la UI (no filtran por municipio):
+// Municipios especiales para probar estados de la UI (aparecen al final del filtro de municipio
+// como "(prueba) ..."; no filtran por municipio):
 // - 900: Bonita no disponible (tiempos sin datos y aviso en el resumen).
 // - 901: /consorcios responde 500 (un bloque con error, el resto sigue andando).
 
@@ -29,9 +30,26 @@ import type {
   TotalSuministro,
 } from '../types/indicadores';
 import { TIPOS_RECURSO } from '../types/lote';
+import type { Municipio } from '../types/municipio';
 
 export const MUNICIPIO_MOCK_BONITA_CAIDO = 900;
 export const MUNICIPIO_MOCK_ERROR_CONSORCIOS = 901;
+
+/**
+ * Municipios del modo de prueba (los mismos ids que usan los proyectos simulados), más dos
+ * opciones especiales al final para probar los estados de error de la UI.
+ */
+export function mockMunicipios(): Municipio[] {
+  return [
+    { id: 5, nombre: 'Bahía Blanca' },
+    { id: 2, nombre: 'Berisso' },
+    { id: 3, nombre: 'Ensenada' },
+    { id: 1, nombre: 'La Plata' },
+    { id: 4, nombre: 'Quilmes' },
+    { id: MUNICIPIO_MOCK_BONITA_CAIDO, nombre: '(prueba) Bonita no disponible' },
+    { id: MUNICIPIO_MOCK_ERROR_CONSORCIOS, nombre: '(prueba) Error en consorcios' },
+  ];
+}
 
 const ESTADOS: EstadoEmergencia[] = [
   'REGISTRADA',

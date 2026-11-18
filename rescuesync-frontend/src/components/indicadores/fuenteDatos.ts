@@ -10,9 +10,11 @@ import {
   obtenerSuministros,
   obtenerTiemposEtapas,
 } from '../../api/indicadores';
+import { listarMunicipios } from '../../api/municipios';
 import {
   mockConsorcios,
   mockDescargarReporte,
+  mockMunicipios,
   mockProyectos,
   mockResumen,
   mockSuministros,
@@ -27,6 +29,7 @@ import type {
   SuministrosMovilizados,
   TiemposEtapas,
 } from '../../types/indicadores';
+import type { Municipio } from '../../types/municipio';
 
 export const USA_MOCKS = import.meta.env.VITE_INDICADORES_MOCK === 'true';
 
@@ -37,6 +40,8 @@ export interface FuenteIndicadores {
   proyectos: (filtro: FiltroIndicadores) => Promise<EstadoProyectos>;
   tiemposEtapas: (filtro: FiltroIndicadores) => Promise<TiemposEtapas>;
   descargar: (formato: FormatoReporte, filtro: FiltroIndicadores) => Promise<Blob>;
+  /** Opciones del filtro por municipio. */
+  municipios: () => Promise<Municipio[]>;
 }
 
 function conDemora<T>(producir: () => T, ms: number): Promise<T> {
@@ -59,6 +64,7 @@ const fuenteMock: FuenteIndicadores = {
   // Bonita suele ser la fuente más lenta.
   tiemposEtapas: (f) => conDemora(() => mockTiemposEtapas(f), 900),
   descargar: (formato, f) => conDemora(() => mockDescargarReporte(formato, f), 300),
+  municipios: () => conDemora(mockMunicipios, 150),
 };
 
 const fuenteApi: FuenteIndicadores = {
@@ -68,6 +74,7 @@ const fuenteApi: FuenteIndicadores = {
   proyectos: obtenerProyectos,
   tiemposEtapas: obtenerTiemposEtapas,
   descargar: descargarReporte,
+  municipios: listarMunicipios,
 };
 
 export const fuenteIndicadores: FuenteIndicadores = USA_MOCKS ? fuenteMock : fuenteApi;
