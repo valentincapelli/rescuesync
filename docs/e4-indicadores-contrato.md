@@ -14,7 +14,8 @@ Rama base: `feature/E4-indicadores-base`. Este documento es la referencia para t
 | DTOs del contrato | `dto/indicadores/*.java` |
 | Endpoints (funcionan, con datos vacíos) | `controller/IndicadorController.java` |
 | Fachada que combina todo | `service/indicadores/IndicadorService.java` |
-| Stubs a implementar | `service/indicadores/IndicadoresPropiosService.java` (A), `service/indicadores/TiemposBonitaService.java` (B) |
+| Indicadores propios (frente A, **implementado**) | `service/indicadores/IndicadoresPropiosService.java`, `repository/IndicadoresQueryRepository.java`, tests en `IndicadoresPropiosServiceTests` |
+| Stub a implementar | `service/indicadores/TiemposBonitaService.java` (B) |
 | Consulta de casos de Bonita por filtro | `EmergenciaRepository.buscarCasosBonita(...)` |
 | Tipos y cliente del front | `rescuesync-frontend/src/types/indicadores.ts`, `src/api/indicadores.ts` |
 | Tests del contrato | `IndicadoresContratoIntegrationTests` (14 tests) |
@@ -84,7 +85,7 @@ Todos `GET`, bajo `/api/indicadores`, requieren sesión con `CONSULTAR_INDICADOR
 - `porEstado`: los 8 valores de `EstadoEmergencia`, incluso en 0.
 - `proyectos`: una fila por emergencia, por `fechaRegistro` descendente.
   - `fechaCierre`: el primer cambio a `CERRADA` en `historial_estados`; null si no está cerrada.
-  - `porcentajeCobertura` = suma de `cantidadOfrecida` de las ofertas adjudicadas / suma de `cantidadRequerida` de sus lotes * 100, con un tope de 100. null si no tiene lotes.
+  - `porcentajeCobertura` = Σ min(adjudicado del lote, requerido del lote) / Σ requerido * 100, donde "adjudicado" es la suma de `cantidadOfrecida` de sus ofertas adjudicadas. El tope se aplica **por lote**, para que un lote sobrecubierto no tape a otro sin cubrir. null si no tiene lotes.
 
 ### 3.4 Tiempos por etapa (`/tiempos-etapas`, Bonita)
 
