@@ -1,6 +1,6 @@
 # E4 – Dashboard de indicadores: contrato y reparto de trabajo
 
-Rama base: `feature/E4-indicadores-base`. Este documento es la referencia para todos los frentes de trabajo (personas o agentes). **Si algo de acá cambia, se cambia primero acá y en los DTOs, y se avisa a los demás frentes.**
+Desarrollado en `feature/E4-indicadores-base` e integrado en `development` el 18/11/2026. Las decisiones del equipo sobre E4 están en [`e4-01-ajustes-pendientes.md`](e4-01-ajustes-pendientes.md), donde D2 y D3 reflejan esta implementación. Este documento es la referencia para todos los frentes de trabajo (personas o agentes). **Si algo de acá cambia, se cambia primero acá y en los DTOs, y se avisa a los demás frentes.**
 
 ## 0. Estado actual
 
@@ -182,4 +182,4 @@ Valores esperados con el filtro por defecto: 10 proyectos con 3 finalizados (30 
 
 ## 7. Estado conocido de la suite
 
-`mvn -o test`: pasan `IndicadoresContratoIntegrationTests` (16), `IndicadoresPropiosServiceTests` (4), `TiemposBonitaServiceTests` (17), `BonitaClientLecturasTests` (5), `ExportadorReporteTests` (3), `OfertasConsolidadas` (4) y `BonitaServiceAccount` (4). Siguen fallando, igual que antes de E4 (ver `docs/e3-08-e3-09-continuidad.md`): `EmergenciaIntegrationTests` (40/41), `LoteIntegrationTests` (15/15) y `RescueSyncApplicationTests` (4 errores). No son de este trabajo. Para correr solo lo relevante, usar `-Dtest=...`.
+`mvn -o test`: **117/117** después de integrar los arreglos de tests de `development` (`775e87a`). De E4: `IndicadoresContratoIntegrationTests` (16), `IndicadoresPropiosServiceTests` (4), `TiemposBonitaServiceTests` (17), `BonitaClientLecturasTests` (5), `BonitaRestClientConfigTests` (2), `ExportadorReporteTests` (3) y `MunicipiosIntegrationTests` (2).
