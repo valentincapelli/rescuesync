@@ -84,6 +84,14 @@ class IndicadoresContratoIntegrationTests {
 
     @Test
     void resumenAplicaFechasPorDefectoYMarcaBonitaNoDisponible() throws Exception {
+        // Sin casos de Bonita no se consulta Bonita (disponible = true con 0 muestras). Con un caso,
+        // se consulta bonita.base-url (localhost:1, sin nada escuchando) y queda no disponible.
+        jdbcTemplate.update("INSERT INTO emergencias "
+                        + "(tipo_desastre, nivel_gravedad, zona_afectada, descripcion, municipio_id, estado, "
+                        + "bonita_case_id, created_at, updated_at) "
+                        + "VALUES ('INUNDACION', 'ALTO', 'Zona Bonita', 'Con caso', ?, 'REGISTRADA', 4242, "
+                        + "CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
+                municipioId);
         LocalDate hoy = LocalDate.now(ZoneId.of("America/Argentina/Buenos_Aires"));
         mockMvc.perform(get("/api/indicadores/resumen").cookie(cookieDirectivo))
                 .andExpect(status().isOk())
