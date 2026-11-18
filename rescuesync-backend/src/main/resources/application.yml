@@ -44,6 +44,10 @@ bonita:
   username: ${BONITA_USER:walter.bates}
   password: ${BONITA_PASSWORD:bpm}
   process-name: ${BONITA_PROCESS:RescueSync}
+  indicadores:
+    # Caché por caso de los tiempos por etapa (E4). Los casos archivados no cambian y duran más.
+    cache-ttl: ${BONITA_INDICADORES_CACHE_TTL:5m}
+    cache-ttl-archivados: ${BONITA_INDICADORES_CACHE_TTL_ARCHIVADOS:12h}
 
 springdoc:
   swagger-ui:
