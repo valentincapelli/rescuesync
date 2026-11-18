@@ -3,6 +3,8 @@ package com.grupo21.rescuesync.controller;
 import com.grupo21.rescuesync.dto.ofertas.CrearOfertaRequest;
 import com.grupo21.rescuesync.dto.ofertas.EditarOfertaRequest;
 import com.grupo21.rescuesync.dto.ofertas.OfertaResponse;
+import com.grupo21.rescuesync.dto.ofertas.SeleccionarOfertasRequest;
+import com.grupo21.rescuesync.dto.ofertas.SeleccionarOfertasResponse;
 import com.grupo21.rescuesync.service.OfertaService;
 
 import jakarta.validation.Valid;
@@ -69,5 +71,21 @@ public class OfertaController {
                 );
 
         return ResponseEntity.ok(ofertas);
+    }
+
+    @PreAuthorize("hasAuthority('CONSULTAR_OFERTAS_VALIDADAS_MUNICIPIO')")
+    @PutMapping("/seleccion")
+    public ResponseEntity<SeleccionarOfertasResponse> seleccionarOfertas(
+            @Valid @RequestBody SeleccionarOfertasRequest request,
+            @AuthenticationPrincipal UserDetails userDetails
+    ) {
+
+        SeleccionarOfertasResponse response =
+                ofertaService.seleccionarOfertas(
+                        userDetails.getUsername(),
+                        request
+                );
+
+        return ResponseEntity.ok(response);
     }
 }

@@ -11,4 +11,9 @@ public interface EmergenciaRepository extends JpaRepository<Emergencia, Long> {
     List<Emergencia> findByEstado(EstadoEmergencia estado);
 
     List<Emergencia> findByMunicipioId(Long municipioId);
+
+    boolean existsByIdAndMunicipio_Id(
+            Long emergenciaId,
+            Long municipioId
+    );
 }
