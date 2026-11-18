@@ -2,7 +2,11 @@
 
 Rama base: `feature/E4-indicadores-base`. Este documento es la referencia para todos los frentes de trabajo (personas o agentes). **Si algo de acá cambia, se cambia primero acá y en los DTOs, y se avisa a los demás frentes.**
 
-## 1. Qué ya está hecho en la base
+## 0. Estado actual
+
+Los frentes A, B y C están implementados y mergeados en `feature/E4-indicadores-base`, junto con la integración: exportación CSV/XLSX, timeouts de Bonita, seed de demo y documentación en `rescuesync-backend/README.md`. **Falta:** la prueba de punta a punta con Bonita 10.4 levantado (ver la sección 3.4 y el Javadoc de `TiemposBonitaService`) y ejecutar el seed contra PostgreSQL. El resto de este documento es el contrato original; donde algo cambió, está marcado.
+
+## 1. Piezas y ubicación
 
 | Pieza | Ubicación |
 |---|---|
@@ -12,13 +16,16 @@ Rama base: `feature/E4-indicadores-base`. Este documento es la referencia para t
 | Historial de estados | `model/HistorialEstado.java`, `repository/HistorialEstadoRepository.java`, `service/HistorialEstadoService.java` |
 | Etapas de la emergencia ↔ tareas de Bonita | `model/EtapaEmergencia.java` |
 | DTOs del contrato | `dto/indicadores/*.java` |
-| Endpoints (funcionan, con datos vacíos) | `controller/IndicadorController.java` |
+| Endpoints | `controller/IndicadorController.java` |
 | Fachada que combina todo | `service/indicadores/IndicadorService.java` |
-| Indicadores propios (frente A, **implementado**) | `service/indicadores/IndicadoresPropiosService.java`, `repository/IndicadoresQueryRepository.java`, tests en `IndicadoresPropiosServiceTests` |
-| Stub a implementar | `service/indicadores/TiemposBonitaService.java` (B) |
+| Indicadores propios (frente A) | `service/indicadores/IndicadoresPropiosService.java`, `repository/IndicadoresQueryRepository.java`, tests en `IndicadoresPropiosServiceTests` |
+| Tiempos de Bonita (frente B) | `service/indicadores/TiemposBonitaService.java`, `client/BonitaClient.java` (lecturas), `client/FechasBonita.java`, tests en `TiemposBonitaServiceTests` y `BonitaClientLecturasTests` |
+| Exportación CSV/XLSX | `service/indicadores/ReporteTabular.java`, `service/indicadores/ExportadorReporte.java`, tests en `ExportadorReporteTests` |
 | Consulta de casos de Bonita por filtro | `EmergenciaRepository.buscarCasosBonita(...)` |
+| Front (frente C) | `rescuesync-frontend/src/pages/IndicadoresPage.tsx`, `src/components/indicadores/`, `src/mocks/indicadores.ts` |
 | Tipos y cliente del front | `rescuesync-frontend/src/types/indicadores.ts`, `src/api/indicadores.ts` |
-| Tests del contrato | `IndicadoresContratoIntegrationTests` (14 tests) |
+| Tests del contrato | `IndicadoresContratoIntegrationTests` (16 tests) |
+| Seed de demo | `scripts/seed-indicadores-demo.sql` |
 
 Rutas Java relativas a `rescuesync-backend/src/main/java/com/grupo21/rescuesync/`.
 
@@ -35,7 +42,7 @@ Todos `GET`, bajo `/api/indicadores`, requieren sesión con `CONSULTAR_INDICADOR
 | `/tiempos-etapas` | `TiemposEtapasResponse` | Bonita |
 | `/reporte?formato=json\|csv\|xlsx` | `ReporteIndicadoresResponse` (json) o archivo | todo |
 
-`csv` y `xlsx` hoy responden **501**; se implementan en la integración. Formato desconocido: 400.
+`csv` y `xlsx` se descargan como adjunto `indicadores_<desde>_<hasta>.<ext>`. El CSV está pensado para Excel en configuración regional de Argentina: separador `;`, coma decimal, UTF-8 con BOM, CRLF, una sección por bloque (`# Título`, encabezado, filas, línea vacía). El XLSX trae una hoja por bloque, con números como celdas numéricas. Los textos que empiezan con `= + - @` se prefijan con `'` para que Excel no los tome como fórmulas. Formato desconocido: 400.
 
 ### Filtros (query params, todos opcionales) – `FiltroIndicadores`
 
@@ -153,22 +160,26 @@ Cada frente trabaja en su propia rama (o worktree) a partir de `feature/E4-indic
   - Barras horizontales de tiempo promedio por etapa, con mínimo y máximo en el tooltip y el número de muestras.
   - Tabla de proyectos ordenable. Hacer clic en un estado del gráfico filtra la tabla.
   - Aviso visible cuando `bonita.disponible === false`, con `mensaje`.
-  - Botones Exportar JSON, CSV y Excel con `descargarReporte`. El 501 se muestra como "Formato todavía no disponible".
+  - Botones Exportar JSON, CSV y Excel con `descargarReporte`. (Ya no hay 501: cualquier error de la descarga se muestra con su mensaje.)
   - Estados de carga, error y vacío.
 - **No toca:** nada del backend.
 - **Verificación:** `npm run build` sin errores.
 
 ### Integración (después de A, B y C)
 
-1. Merge de A, B y C sobre la base y verificación de que la suite queda igual o mejor.
-2. Exportación CSV (una sección por bloque, separador `;`, UTF-8 con BOM para Excel) y XLSX (Apache POI, una hoja por bloque, más una hoja "Filtros"). Se saca `FuncionalidadPendienteException`.
-3. Seed de demo para el dashboard (sección 6).
-4. Prueba de punta a punta con Bonita levantado y documentación en el README del backend.
+1. ✅ Merge de A, B y C sobre la base; la suite queda igual que antes más los tests nuevos.
+2. ✅ Exportación CSV y XLSX (Apache POI 5.4.1). Se sacó `FuncionalidadPendienteException`.
+3. ✅ Timeouts en el `RestClient` de Bonita: `bonita.connect-timeout` (5 s) y `bonita.read-timeout` (15 s).
+4. ✅ Seed de demo (sección 6). **Sin ejecutar todavía contra PostgreSQL.**
+5. ✅ Documentación en `rescuesync-backend/README.md`.
+6. ⏳ Prueba de punta a punta con Bonita levantado.
 
-## 6. Seed de demo (integración)
+## 6. Seed de demo
 
-`scripts/seed-indicadores-demo.sql`, sobre el seed base: unas 10 emergencias repartidas en 6 meses y en varios estados (algunas `CERRADA`), lotes `CUBIERTO` con 1 o 2 ONGs, ofertas `COMPROMETIDA`/`FINALIZADA`, y **sus filas de `historial_estados`** con fechas coherentes.
+`scripts/seed-indicadores-demo.sql`, sobre el seed base: 10 emergencias repartidas en los últimos ~6 meses, en todos los tramos del flujo (3 `CERRADA`, 2 `EN_EJECUCION`, 1 `ADJUDICADA`, 1 `COBERTURA_PARCIAL`, 1 `CONVOCATORIA_PUBLICADA`, 1 `EN_REVISION`, 1 `REGISTRADA`). Incluye lotes cubiertos por 1, 2 y 3 ONGs, ofertas comprometidas, finalizadas, seleccionadas, pendientes y rechazadas, y **todas sus filas de `historial_estados`**. Las fechas son relativas al momento de ejecución. Es idempotente: borra solo lo que cargó antes (descripción con prefijo `[DEMO-E4]`). No trae casos de Bonita.
+
+Valores esperados con el filtro por defecto: 10 proyectos con 3 finalizados (30 %), y 11 lotes resueltos de los cuales 5 por consorcio (45,5 %).
 
 ## 7. Estado conocido de la suite
 
-`mvn -o test` en la base: `IndicadoresContratoIntegrationTests` 14/14 y `OfertasConsolidadas` y `BonitaServiceAccount` OK. Siguen fallando, igual que antes de E4 (ver `docs/e3-08-e3-09-continuidad.md`): `EmergenciaIntegrationTests` (40/41), `LoteIntegrationTests` (15/15) y `RescueSyncApplicationTests` (4 errores). No son de este trabajo. Para correr solo lo relevante, usar `-Dtest=...`.
+`mvn -o test`: pasan `IndicadoresContratoIntegrationTests` (16), `IndicadoresPropiosServiceTests` (4), `TiemposBonitaServiceTests` (17), `BonitaClientLecturasTests` (5), `ExportadorReporteTests` (3), `OfertasConsolidadas` (4) y `BonitaServiceAccount` (4). Siguen fallando, igual que antes de E4 (ver `docs/e3-08-e3-09-continuidad.md`): `EmergenciaIntegrationTests` (40/41), `LoteIntegrationTests` (15/15) y `RescueSyncApplicationTests` (4 errores). No son de este trabajo. Para correr solo lo relevante, usar `-Dtest=...`.

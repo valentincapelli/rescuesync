@@ -223,6 +223,66 @@ aserciones se van a romper. Es un efecto secundario esperado del diseño actual,
 no un bug — si molesta, se soluciona mockeando `BonitaClient` en el test (o con un
 profile de test que apunte `BONITA_URL` a una URL inexistente).
 
+## Dashboard de indicadores (E4)
+
+Endpoints `GET /api/indicadores/*` para el personal directivo: rol `DIRECTIVO`, permiso
+`CONSULTAR_INDICADORES`, usuario demo `direccion@test.com` / `123456`. La fórmula exacta de
+cada indicador y las decisiones de diseño están en
+[`docs/e4-indicadores-contrato.md`](../docs/e4-indicadores-contrato.md).
+
+| Ruta | Qué devuelve | Fuente |
+|---|---|---|
+| `/resumen` | KPIs principales | propios + Bonita |
+| `/suministros` | Suministros movilizados por mes, tipo de recurso y unidad | propios |
+| `/consorcios` | % de lotes resueltos por consorcios de 2+ ONGs | propios |
+| `/proyectos` | Emergencias por estado, cobertura y fecha de cierre | propios |
+| `/tiempos-etapas` | Tiempo promedio, mediana, mínimo y máximo por etapa | API de Bonita |
+| `/reporte?formato=json\|csv\|xlsx` | Todo junto, como JSON o como archivo descargable | todo |
+
+Filtros opcionales en todos: `desde` y `hasta` (`yyyy-MM-dd`, por defecto los últimos 12 meses),
+`municipioId`, `tipoDesastre` y `tipoRecurso` (este último solo afecta suministros y consorcios).
+
+```bash
+# Con la cookie de sesión de direccion@test.com (POST /api/auth/login)
+curl -b cookies.txt "http://localhost:8081/api/indicadores/resumen?desde=2026-06-01"
+curl -b cookies.txt -OJ "http://localhost:8081/api/indicadores/reporte?formato=xlsx"
+```
+
+**Exportación.** El CSV está pensado para Excel en configuración regional de Argentina:
+separador `;`, coma decimal, UTF-8 con BOM, una sección por bloque. El XLSX trae una hoja por
+bloque. Para procesar los datos con un programa, usar `formato=json`.
+
+**Historial de estados.** Los indicadores dependen de `historial_estados`, que registra cada
+cambio de estado de emergencias, lotes y ofertas. Regla para todo código nuevo: no llamar a
+`setEstado(...)` en esas entidades; usar `HistorialEstadoService.cambiarEstado(...)` (o
+`registrarAlta(...)` al crearlas).
+
+**Bonita.** Si Bonita no responde, el dashboard responde igual con `bonita.disponible = false` y
+los tiempos por etapa vacíos. Configuración:
+
+| Variable | Default | Para qué |
+|---|---|---|
+| `BONITA_CONNECT_TIMEOUT` / `BONITA_READ_TIMEOUT` | `5s` / `15s` | Timeouts de todas las llamadas a Bonita |
+| `BONITA_INDICADORES_CACHE_TTL` | `5m` | Caché de tiempos de los casos en curso |
+| `BONITA_INDICADORES_CACHE_TTL_ARCHIVADOS` | `12h` | Caché de los casos terminados (no cambian) |
+
+**Datos de demo.** Con la base ya creada y `scripts/seed-backend-demo.sql` cargado:
+
+```bash
+psql -h localhost -p 5433 -U rescuesync -d rescuesync -v ON_ERROR_STOP=1 \
+  -f scripts/seed-indicadores-demo.sql
+```
+
+Carga 10 emergencias en los últimos ~6 meses, con su historial. Se puede volver a ejecutar. No
+trae casos de Bonita: los tiempos por etapa se ven creando emergencias desde la app con Bonita
+levantado. En una base creada antes de E4, aplicar primero `scripts/usuarios_rol_directivo.sql`
+para que se acepte el rol `DIRECTIVO`.
+
+**Pendiente de verificar contra Bonita 10.4 real:** que `GET /API/bpm/archivedActivity` devuelva
+un registro por cada cambio de estado de una tarea. Si devuelve solo el estado final, todas las
+etapas quedan con 0 muestras y hay que cambiar la consulta a `archivedFlowNode` en
+`BonitaClient.listarActividadesArchivadas` (detalle en el Javadoc de `TiemposBonitaService`).
+
 ## Próximas tareas que se apoyan en esta base
 
 - **E2-04** ✅ Alta de emergencias: `POST /api/emergencias` (+ `GET /api/emergencias`, `GET /api/emergencias/{id}`) en `EmergenciaController` / `EmergenciaService`, usados por el formulario del frontend.
