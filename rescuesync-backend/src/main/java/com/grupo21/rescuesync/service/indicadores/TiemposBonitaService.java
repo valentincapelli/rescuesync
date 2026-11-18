@@ -42,7 +42,7 @@ import java.util.concurrent.ConcurrentHashMap;
  *       {@code casosFinalizados} y aporta {@code end_date - start} al promedio total (si las dos fechas
  *       son válidas; si no, cuenta como finalizado pero no aporta al promedio).</li>
  *   <li>Si no está archivado, {@code case/{id}} confirma que existe y está en curso.</li>
- *   <li>{@code archivedActivity?f=caseId=} (todas las páginas) → duración de cada tarea completada.</li>
+ *   <li>{@code archivedFlowNode?f=caseId=} (todas las páginas) → duración de cada tarea completada.</li>
  * </ol>
  *
  * <p><b>Duración de una tarea.</b> Bonita archiva un registro por cada cambio de estado de una
@@ -63,12 +63,13 @@ import java.util.concurrent.ConcurrentHashMap;
  * La duración de una etapa en un caso es la suma de sus tareas (un mismo nombre puede ejecutarse varias
  * veces, por ejemplo en un ciclo). Las tareas que no están en ninguna {@link EtapaEmergencia} se ignoran.
  *
- * <p><b>No verificado contra un Runtime 10.4 real</b> (solo contra la referencia de la REST API):
- * que {@code archivedActivity} devuelva varios registros por actividad (si devolviera solo el
- * {@code completed}, todas las tareas se descartarían y las etapas quedarían con 0 muestras; en ese caso
- * habría que pasar a {@code archivedFlowNode}); que el filtro {@code sourceObjectId} de {@code archivedCase} y el
- * {@code caseId} de {@code archivedActivity} funcionen así; los nombres exactos de los estados en
- * minúscula; y la zona horaria de las fechas (ver {@link FechasBonita}).
+ * <p><b>Verificado contra Bonita Runtime 10.4</b> (18/11/2026, caso real creado desde la app):
+ * {@code archivedFlowNode} trae un registro por cambio de estado ({@code initializing}, {@code ready},
+ * {@code completed}, en minúscula) con el mismo {@code sourceObjectId}; el filtro {@code caseId} funciona;
+ * las fechas están en hora de Argentina. {@code archivedActivity} <b>no sirve</b>: trae solo el registro
+ * {@code completed}, y con eso todas las tareas se descartarían. <b>Pendiente</b>: el camino de un caso
+ * terminado ({@code archivedCase?f=sourceObjectId=} con {@code start} y {@code end_date}), porque el
+ * proceso todavía no llega al final desde la app.
  *
  * <h2>Errores</h2>
  * <ul>

@@ -4,7 +4,7 @@ Rama base: `feature/E4-indicadores-base`. Este documento es la referencia para t
 
 ## 0. Estado actual
 
-Los frentes A, B y C están implementados y mergeados en `feature/E4-indicadores-base`, junto con la integración: exportación CSV/XLSX, timeouts de Bonita, seed de demo y documentación en `rescuesync-backend/README.md`. **Falta:** la prueba de punta a punta con Bonita 10.4 levantado (ver la sección 3.4 y el Javadoc de `TiemposBonitaService`) y ejecutar el seed contra PostgreSQL. El resto de este documento es el contrato original; donde algo cambió, está marcado.
+Los frentes A, B y C están implementados y mergeados en `feature/E4-indicadores-base`, junto con la integración: exportación CSV/XLSX, timeouts de Bonita, seed de demo y documentación en `rescuesync-backend/README.md`. Probado de punta a punta el 18/11/2026 con PostgreSQL 16 y Bonita 10.4: los seeds corren y son idempotentes, el dashboard da los valores esperados (sección 6), CSV y XLSX se descargan bien, y los tiempos por etapa salen de Bonita con `archivedFlowNode` (no `archivedActivity`, que trae solo el estado final). **Falta:** verificar el camino de un caso terminado en Bonita (`archivedCase`), cuando el flujo llegue al final desde la app. El resto de este documento es el contrato original; donde algo cambió, está marcado.
 
 ## 1. Piezas y ubicación
 
@@ -170,9 +170,9 @@ Cada frente trabaja en su propia rama (o worktree) a partir de `feature/E4-indic
 1. ✅ Merge de A, B y C sobre la base; la suite queda igual que antes más los tests nuevos.
 2. ✅ Exportación CSV y XLSX (Apache POI 5.4.1). Se sacó `FuncionalidadPendienteException`.
 3. ✅ Timeouts en el `RestClient` de Bonita: `bonita.connect-timeout` (5 s) y `bonita.read-timeout` (15 s).
-4. ✅ Seed de demo (sección 6). **Sin ejecutar todavía contra PostgreSQL.**
+4. ✅ Seed de demo (sección 6), ejecutado contra PostgreSQL 16.
 5. ✅ Documentación en `rescuesync-backend/README.md`.
-6. ⏳ Prueba de punta a punta con Bonita levantado.
+6. ✅ Prueba de punta a punta con Bonita 10.4 (falta el camino de un caso terminado).
 
 ## 6. Seed de demo
 

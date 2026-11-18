@@ -278,10 +278,15 @@ trae casos de Bonita: los tiempos por etapa se ven creando emergencias desde la 
 levantado. En una base creada antes de E4, aplicar primero `scripts/usuarios_rol_directivo.sql`
 para que se acepte el rol `DIRECTIVO`.
 
-**Pendiente de verificar contra Bonita 10.4 real:** que `GET /API/bpm/archivedActivity` devuelva
-un registro por cada cambio de estado de una tarea. Si devuelve solo el estado final, todas las
-etapas quedan con 0 muestras y hay que cambiar la consulta a `archivedFlowNode` en
-`BonitaClient.listarActividadesArchivadas` (detalle en el Javadoc de `TiemposBonitaService`).
+**Verificado contra Bonita 10.4 (18/11/2026):** los tiempos por etapa se calculan con
+`GET /API/bpm/archivedFlowNode`, que trae un registro por cada cambio de estado de una tarea.
+`archivedActivity` no sirve: trae solo el estado final. Falta verificar el camino de un caso
+terminado (`archivedCase`), porque el flujo todavía no llega al final desde la app. Detalle en el
+Javadoc de `TiemposBonitaService`.
+
+**Cliente HTTP de Bonita:** no usar `SimpleClientHttpRequestFactory`. Con él, un POST sin cuerpo
+sale con `Content-Type: application/x-www-form-urlencoded` y Bonita responde 415 al ejecutar una
+tarea. Lo cubre `BonitaRestClientConfigTests`.
 
 ## Próximas tareas que se apoyan en esta base
 

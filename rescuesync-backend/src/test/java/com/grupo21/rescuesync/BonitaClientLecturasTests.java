@@ -96,9 +96,9 @@ class BonitaClientLecturasTests {
     @Test
     void actividadesArchivadasRecorrenTodasLasPaginas() {
         esperarLogin();
-        server.expect(conQuery("/API/bpm/archivedActivity", "p=0", "c=100", "f=caseId=7"))
+        server.expect(conQuery("/API/bpm/archivedFlowNode", "p=0", "c=100", "f=caseId=7"))
                 .andRespond(withSuccess(pagina(0, 100), MediaType.APPLICATION_JSON));
-        server.expect(conQuery("/API/bpm/archivedActivity", "p=1", "c=100", "f=caseId=7"))
+        server.expect(conQuery("/API/bpm/archivedFlowNode", "p=1", "c=100", "f=caseId=7"))
                 .andRespond(withSuccess(pagina(100, 3), MediaType.APPLICATION_JSON));
 
         List<BonitaActividadArchivada> actividades = client.listarActividadesArchivadas("7");

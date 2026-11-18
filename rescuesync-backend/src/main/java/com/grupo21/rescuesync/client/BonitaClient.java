@@ -254,9 +254,9 @@ public class BonitaClient {
     // ---------------------------------------------------------------------------------------------
     // Consultas de solo lectura para los indicadores (E4, tiempos por etapa).
     //
-    // Rutas, filtros y nombres de campos tomados de la referencia de la REST API de Bonita
-    // (BPM API: case, archivedCase, archivedActivity). Falta verificarlos contra un Runtime
-    // 10.4 real; ver el Javadoc de TiemposBonitaService.
+    // Rutas, filtros y nombres de campos de la REST API de Bonita (BPM API: case, archivedCase,
+    // archivedFlowNode). archivedFlowNode verificado contra Bonita Runtime 10.4 el 18/11/2026; ver
+    // el Javadoc de TiemposBonitaService.
     //
     // Errores: un 404 se informa como "no existe" (Optional vacío); cualquier otro error HTTP o de
     // conexión se traduce a BonitaIntegrationException. El 401 lo resuelve withSession.
@@ -310,9 +310,15 @@ public class BonitaClient {
     }
 
     /**
-     * Todas las actividades archivadas de un caso:
-     * {@code GET /API/bpm/archivedActivity?f=caseId={caseId}&p=..&c=..}, recorriendo páginas hasta que
-     * una venga incompleta (o vacía). Puede haber varios registros por actividad.
+     * Todos los registros archivados de los flow nodes de un caso:
+     * {@code GET /API/bpm/archivedFlowNode?f=caseId={caseId}&p=..&c=..}, recorriendo páginas hasta que
+     * una venga incompleta (o vacía).
+     *
+     * <p>Se usa {@code archivedFlowNode} y no {@code archivedActivity}: verificado contra Bonita 10.4,
+     * {@code archivedActivity} devuelve solo el registro {@code completed} de cada tarea, mientras que
+     * {@code archivedFlowNode} trae uno por cada cambio de estado ({@code initializing}, {@code ready},
+     * {@code completed}) con el mismo {@code sourceObjectId}, que es lo que necesita el cálculo de
+     * duración. También incluye eventos y gateways; esos no están en ninguna etapa y se ignoran.
      */
     public List<BonitaActividadArchivada> listarActividadesArchivadas(String caseId) {
         return consultar("listar las actividades archivadas del caso " + caseId, () -> {
@@ -321,7 +327,7 @@ public class BonitaClient {
                 final int p = pagina;
                 List<BonitaActividadArchivada> lote = withSession(sesion -> bonitaRestClient.get()
                         .uri(uriBuilder -> uriBuilder
-                                .path("/API/bpm/archivedActivity")
+                                .path("/API/bpm/archivedFlowNode")
                                 .queryParam("p", String.valueOf(p))
                                 .queryParam("c", String.valueOf(TAMANIO_PAGINA))
                                 .queryParam("f", "caseId=" + caseId)

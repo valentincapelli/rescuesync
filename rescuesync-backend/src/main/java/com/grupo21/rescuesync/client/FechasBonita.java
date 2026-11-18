@@ -17,11 +17,11 @@ import java.util.Optional;
  * ejemplos de la documentación. Se aceptan también sin milisegundos, con menos dígitos de fracción y
  * con {@code T} como separador.
  *
- * <p><b>Zona horaria asumida:</b> Bonita no manda zona; formatea con la zona del JVM del servidor.
- * Se asume {@code America/Argentina/Buenos_Aires}, la misma del resto del sistema. Para los indicadores
- * solo importan las diferencias entre fechas, así que un error de zona no cambia las duraciones
- * (Argentina no tiene horario de verano), pero sí el {@link Instant} absoluto. No verificado contra un
- * Runtime real.
+ * <p><b>Zona horaria:</b> Bonita no manda zona; formatea con la zona del JVM del servidor. Se usa
+ * {@code America/Argentina/Buenos_Aires}, la misma del resto del sistema. Verificado contra Bonita
+ * Runtime 10.4 local el 18/11/2026: las fechas coinciden con la hora local de Argentina. Si Bonita
+ * corriera con otra zona, las duraciones no cambian (solo importan las diferencias y Argentina no tiene
+ * horario de verano), pero sí el {@link Instant} absoluto.
  *
  * <p>Tolerante: texto nulo, vacío o mal formado devuelve {@link Optional#empty()}, nunca lanza.
  */
