@@ -11,6 +11,10 @@
 
 La [guía de entrega y continuidad](docs/e3-08-e3-09-continuidad.md) describe el endpoint de ofertas consolidadas, el conector de Bonita, la configuración segura, las pruebas y la exportación actualizada del proceso.
 
+## Dashboard de indicadores (E4)
+
+El [contrato de indicadores](docs/e4-indicadores-contrato.md) define los endpoints `/api/indicadores`, la fórmula de cada métrica, el historial de estados y el reparto de trabajo entre frentes.
+
 ## Cómo levantar todo
 
 ```bash

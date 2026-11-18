@@ -47,6 +47,7 @@ public class EmergenciaService {
     private final BonitaProperties bonitaProperties;
     private final UsuarioRepository usuarioRepository;
     private final ConvocatoriaProperties convocatoriaProperties;
+    private final HistorialEstadoService historialEstadoService;
 
         @Transactional
     public EmergenciaResponse crear(
@@ -78,6 +79,7 @@ public class EmergenciaService {
         emergencia.setEstado(EstadoEmergencia.REGISTRADA);
 
         Emergencia guardada = emergenciaRepository.save(emergencia);
+        historialEstadoService.registrarAlta(guardada);
 
         iniciarProcesoBonita(guardada);
 
@@ -186,9 +188,9 @@ public class EmergenciaService {
             );
     }
 
-    lotes.forEach(lote -> lote.setEstado(EstadoLote.PUBLICADO));
+    lotes.forEach(lote -> historialEstadoService.cambiarEstado(lote, EstadoLote.PUBLICADO));
 
-    emergencia.setEstado(EstadoEmergencia.CONVOCATORIA_PUBLICADA);
+    historialEstadoService.cambiarEstado(emergencia, EstadoEmergencia.CONVOCATORIA_PUBLICADA);
 
     emergencia.setFechaCierreConvocatoria(
             LocalDateTime.now().plus(

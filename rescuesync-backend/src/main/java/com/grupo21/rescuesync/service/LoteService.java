@@ -27,6 +27,7 @@ public class LoteService {
 
     private final LoteRepository loteRepository;
     private final EmergenciaRepository emergenciaRepository;
+    private final HistorialEstadoService historialEstadoService;
 
     @Transactional
     public LoteResponse crear(Long emergenciaId, CrearLoteRequest request) {
@@ -40,10 +41,11 @@ public class LoteService {
 
         // Cargar el primer lote implica que el CCR tomó la emergencia para revisarla.
         if (emergencia.getEstado() == EstadoEmergencia.REGISTRADA) {
-            emergencia.setEstado(EstadoEmergencia.EN_REVISION);
+            historialEstadoService.cambiarEstado(emergencia, EstadoEmergencia.EN_REVISION);
         }
 
         Lote guardado = loteRepository.save(lote);
+        historialEstadoService.registrarAlta(guardado);
         return toResponse(guardado);
     }
 

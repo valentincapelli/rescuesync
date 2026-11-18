@@ -1,7 +1,8 @@
 export type Rol =
   | 'OPERADOR_MUNICIPAL'
   | 'CENTRO_COORDINADOR'
-  | 'REPRESENTANTE_ONG';
+  | 'REPRESENTANTE_ONG'
+  | 'DIRECTIVO';
 
 export interface LoginRequest {
   email: string;

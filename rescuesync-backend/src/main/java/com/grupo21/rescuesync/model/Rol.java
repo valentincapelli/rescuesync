@@ -28,6 +28,9 @@ public enum Rol {
     ),
     SERVICIO_BONITA(
             Permiso.CONSULTAR_OFERTAS_CONSOLIDADAS
+    ),
+    DIRECTIVO(
+            Permiso.CONSULTAR_INDICADORES
     );
 
     private final Set<Permiso> permisos;

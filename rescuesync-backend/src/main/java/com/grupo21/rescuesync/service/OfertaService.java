@@ -29,6 +29,7 @@ public class OfertaService {
     private final OfertaRepository ofertaRepository;
     private final LoteRepository loteRepository;
     private final UsuarioRepository usuarioRepository;
+    private final HistorialEstadoService historialEstadoService;
 
     @Transactional
     public OfertaResponse crear(
@@ -75,6 +76,7 @@ public class OfertaService {
         oferta.setEstado(EstadoOferta.PENDIENTE);
 
         Oferta guardada = ofertaRepository.save(oferta);
+        historialEstadoService.registrarAlta(guardada);
 
         return toResponse(guardada);
         }
