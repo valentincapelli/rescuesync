@@ -6,7 +6,8 @@ public enum Rol {
 
     OPERADOR_MUNICIPAL(
             Permiso.CONSULTAR_LOTES,
-            Permiso.REGISTRAR_EMERGENCIA
+            Permiso.REGISTRAR_EMERGENCIA,
+            Permiso.CONSULTAR_OFERTAS_VALIDADAS_MUNICIPIO
     ),
 
     CENTRO_COORDINADOR(

@@ -18,6 +18,7 @@ import com.grupo21.rescuesync.repository.UsuarioRepository;
 import lombok.RequiredArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -148,6 +149,34 @@ public class OfertaService {
                 );
         }
         }
+    
+    @Transactional
+     public List<OfertaResponse> obtenerOfertasEvaluadasDelMunicipio(
+            String email
+    ) {
+        Usuario usuario = usuarioRepository.findByEmail(email)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Usuario no encontrado")
+                );
+
+        if (usuario.getMunicipio() == null) {
+            throw new BusinessException(
+                    "El usuario no tiene un municipio asociado"
+            );
+        }
+
+        Long municipioId = usuario.getMunicipio().getId();
+
+        List<Oferta> ofertas = ofertaRepository
+                .findByLote_Emergencia_Municipio_IdAndEstado(
+                        municipioId,
+                        EstadoOferta.EVALUADA
+                );
+
+        return ofertas.stream()
+                .map(oferta -> toResponse(oferta))
+                .toList();
+    }
 
     private OfertaResponse toResponse(Oferta oferta) {
         return new OfertaResponse(

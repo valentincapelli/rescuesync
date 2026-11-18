@@ -15,4 +15,9 @@ public interface OfertaRepository extends JpaRepository<Oferta, Long> {
     List<Oferta> findByOngId(Long OngId);
 
     List<Oferta> findByOngIdAndLoteId(Long OngId, Long loteId);
+
+    List<Oferta> findByLote_Emergencia_Municipio_IdAndEstado(
+            Long municipioId,
+            EstadoOferta estado
+    );
 }
