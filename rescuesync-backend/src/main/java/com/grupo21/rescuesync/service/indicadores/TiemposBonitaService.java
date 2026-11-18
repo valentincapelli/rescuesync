@@ -67,9 +67,9 @@ import java.util.concurrent.ConcurrentHashMap;
  * {@code archivedFlowNode} trae un registro por cambio de estado ({@code initializing}, {@code ready},
  * {@code completed}, en minúscula) con el mismo {@code sourceObjectId}; el filtro {@code caseId} funciona;
  * las fechas están en hora de Argentina. {@code archivedActivity} <b>no sirve</b>: trae solo el registro
- * {@code completed}, y con eso todas las tareas se descartarían. <b>Pendiente</b>: el camino de un caso
- * terminado ({@code archivedCase?f=sourceObjectId=} con {@code start} y {@code end_date}), porque el
- * proceso todavía no llega al final desde la app.
+ * {@code completed}, y con eso todas las tareas se descartarían. El caso terminado también quedó
+ * verificado (prueba de E3-10, RescueSync 1.2): {@code archivedCase?f=sourceObjectId=} devuelve el caso
+ * con {@code state = completed}, {@code start} y {@code end_date}, y {@code case/{id}} responde 404.
  *
  * <h2>Errores</h2>
  * <ul>

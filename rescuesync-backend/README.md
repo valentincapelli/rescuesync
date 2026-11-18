@@ -280,9 +280,10 @@ para que se acepte el rol `DIRECTIVO`.
 
 **Verificado contra Bonita 10.4 (18/11/2026):** los tiempos por etapa se calculan con
 `GET /API/bpm/archivedFlowNode`, que trae un registro por cada cambio de estado de una tarea.
-`archivedActivity` no sirve: trae solo el estado final. Falta verificar el camino de un caso
-terminado (`archivedCase`), porque el flujo todavía no llega al final desde la app. Detalle en el
-Javadoc de `TiemposBonitaService`.
+`archivedActivity` no sirve: trae solo el estado final. El caso terminado
+(`archivedCase?f=sourceObjectId=`, con `start` y `end_date`) se verificó en la prueba de E3-10
+([`docs/e3-10-prueba-integracion.md`](../docs/e3-10-prueba-integracion.md)). Detalle en el Javadoc de
+`TiemposBonitaService`.
 
 **Cliente HTTP de Bonita:** no usar `SimpleClientHttpRequestFactory`. Con él, un POST sin cuerpo
 sale con `Content-Type: application/x-www-form-urlencoded` y Bonita responde 415 al ejecutar una

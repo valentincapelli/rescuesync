@@ -6,12 +6,14 @@ Las columnas **Tarea E4** y **Responsable** quedan para completar en la reunión
 
 **Actualización del 18/11/2026 (tarde), acordada con el equipo:** se integró el dashboard de indicadores de E4 (contrato y detalle en [`e4-indicadores-contrato.md`](e4-indicadores-contrato.md)). Se mantiene esa implementación: las decisiones **D2** y **D3** quedan revisadas para reflejarla, el ajuste 14 está hecho y el 17 está hecho para el backend. Los cambios están marcados con *(actualizado)*.
 
+**Actualización del 18/11/2026 (noche):** se probó E3-10 de punta a punta dentro de Bonita, con el backend y el Sistema Nacional levantados. Los conectores funcionan; aparecieron tres problemas del proceso y del script, que quedan como **ajustes 20, 21 y 22**. Informe completo: [`e3-10-prueba-integracion.md`](e3-10-prueba-integracion.md). Los cambios están marcados con *(prueba E3-10)*.
+
 ## 1. Terreno
 
 | Punto | Estado |
 | --- | --- |
 | `development` tiene E3-11 | Sí (`5bf2021`). |
-| E3-10 | Estaba solo en `origin/feature/bonitaapi` (`3cf2123`), sin mergear. Merge limpio sin conflictos, hecho **en local**; falta push. |
+| E3-10 | Estaba solo en `origin/feature/bonitaapi` (`3cf2123`), sin mergear. Merge limpio sin conflictos, hecho **en local**; falta push. *(prueba E3-10)* Probada en Bonita la rama `feature/bonitaapi` tal cual está; sigue sin estar en `development`. |
 | Tests del backend | Arreglados y subidos (`775e87a`): 68/68 pasan. *(actualizado)* Con E4 integrado: **117/117**. |
 | Sistema Nacional en Render | **Sin verificar.** La URL pública no figura en el repo. Falta probar `/actuator/health`, `/api/info` y `/swagger-ui.html`. |
 
@@ -25,7 +27,7 @@ El diagrama (`RescueSync 1.2`) tiene 4 lanes: Municipio, Centro Coordinador, ONG
 | Revisar y desglosar emergencia | Tarea humana; el backend la completa al publicar | `POST/PUT/DELETE .../lotes` | `LotesPage` |
 | Publicar convocatoria | Tarea humana; el backend la completa | `POST /emergencias/{id}/convocatoria` | `LotesPage` |
 | Esperar / cargar / editar ofertas | Tarea humana (ONG) | `POST/PUT /lotes/{id}/ofertas` | `OfertasPage` |
-| Período convocatorio → Evaluar cobertura de lotes | Timer + conector de ofertas consolidadas (E3-09) | `GET .../ofertas-consolidadas` | No aplica |
+| Período convocatorio → Evaluar cobertura de lotes | Timer + conector de ofertas consolidadas (E3-09). *(prueba E3-10)* **La tarea no tiene contrato y el gateway "¿Lotes cubiertos?" tiene tres salidas con la misma condición, que nadie modifica: siempre va a "Resolver cobertura incompleta"** | `GET .../ofertas-consolidadas`. *(prueba E3-10)* No hay endpoint para decidir la cobertura | ~~No aplica~~ *(prueba E3-10)* **No existe**: el centro coordinador no tiene dónde revisar ni decidir la cobertura. Ajuste 20 |
 | Resolver cobertura incompleta | Tarea humana | **No existe.** `EstadoLote.REFORMULADO` sin uso | **No existe** |
 | Evaluar ofertas | Service task + conector SN `EVALUAR` | No guarda el resultado (`EstadoOferta.EVALUADA` sin uso) | No aplica |
 | **Seleccionar oferta** | Tarea humana con contrato (`ofertaSeleccionadaIdInput`, `continuarSeleccionandoInput`) | **No existe** (`SELECCIONADA`/`RECHAZADA` sin uso) | **No existe** |
@@ -47,7 +49,7 @@ Conclusión: de las 14 actividades solo está de punta a punta lo que va hasta p
 | Integración | Estado | Ajuste |
 | --- | --- | --- |
 | Backend → Bonita | Inicia instancia y completa 3 tareas. Si falla la sincronización, solo loguea un warning y la emergencia queda desincronizada. *(actualizado)* Ahora tiene timeouts (conexión 5 s, lectura 15 s). Se probó contra Bonita 10.4 y quedó en evidencia que, si al registrar falla algo que no es `BonitaIntegrationException` (por ejemplo un 415), el alta entera responde 500 y se deshace. | Decidir si se reintenta o se marca la emergencia como desincronizada. Atrapar cualquier error de Bonita al registrar (ajuste 18). |
-| Backend → Bonita (indicadores) | *(actualizado)* El dashboard lee de Bonita `case`, `archivedCase` y `archivedFlowNode` con el usuario `BONITA_USER`. Se verificó con Bonita 10.4: `archivedActivity` trae solo el estado final y no sirve para medir duraciones. | Verificar el camino de un caso terminado (ajuste 19). |
+| Backend → Bonita (indicadores) | *(actualizado)* El dashboard lee de Bonita `case`, `archivedCase` y `archivedFlowNode` con el usuario `BONITA_USER`. Se verificó con Bonita 10.4: `archivedActivity` trae solo el estado final y no sirve para medir duraciones. | ~~Verificar el camino de un caso terminado (ajuste 19).~~ *(prueba E3-10)* Verificado. |
 | Backend → Bonita: tareas posteriores | No completa ninguna después de "Publicar convocatoria". | Depende de las tareas nuevas (selección, notificación, monitoreo, finalización). |
 | Bonita → Backend (ofertas consolidadas) | Funciona con cuenta técnica `SERVICIO_BONITA` y permiso `CONSULTAR_OFERTAS_CONSOLIDADAS`. | Ninguno. |
 | Bonita → Sistema Nacional | Conector con login `SERVICIO`, hasta 3 intentos, 429/5xx reintentables. | Ver timeouts abajo. |
@@ -64,10 +66,11 @@ Propuesta: antes de la primera operación, llamar a `/actuator/health` con timeo
 | --- | --- |
 | Tests del backend | **68/68 pasan** (arreglado en `775e87a`: `jwt.secret`, cookie en vez de Bearer, token del centro coordinador, `plazo-ms`). *(actualizado)* Con E4: **117/117**. |
 | Tests del conector SN | **20/20 pasan con JDK 17.** Con `JAVA_HOME` en JDK 26 el build falla (`Unsupported class file major version 70` en Groovy). La doc dice JDK 21 y el `pom` usa `release 17`. Alinear README y `JAVA_HOME`. |
-| `scripts/configurar_bonita_e3_10.py --check` | **Falla**: `AssertionError: Configuración no idempotente` (Python 3.12, Windows). El `.bos` está intacto (mismo hash que en git). Sin diagnosticar; puede ser una diferencia de codificación del entorno o un problema real del script. |
-| Importar `rescue-sync.bos` en otra máquina | **Sin probar.** Sí se pudo extraer el archivo y leer el diagrama. Hace falta Bonita Studio 2025.2 (el doc E3-10 es explícito en esto). |
+| `scripts/configurar_bonita_e3_10.py --check` | **Falla**: `AssertionError: Configuración no idempotente` (Python 3.12, Windows). El `.bos` está intacto (mismo hash que en git). Sin diagnosticar; puede ser una diferencia de codificación del entorno o un problema real del script. *(prueba E3-10)* **Diagnosticado:** Python 3.11 y 3.12 escriben los saltos de línea de los atributos XML sin escapar; el `.bos` versionado los tiene escapados (`&#10;`), que es lo correcto. **No regenerar el `.bos` con esas versiones**: rompe el script Groovy de "Seleccionar oferta". Ajuste 22 |
+| Importar `rescue-sync.bos` en otra máquina | **Sin probar.** Sí se pudo extraer el archivo y leer el diagrama. Hace falta Bonita Studio 2025.2 (el doc E3-10 es explícito en esto). *(prueba E3-10)* **Hecho** en una segunda máquina: importado, con los conectores incluidos en el `.bos` más los de Maven local, y RescueSync 1.2 desplegado |
+| Conectores con JDK | *(prueba E3-10)* Con **JDK 21**: 12/12 (E3-09) y 20/20 (E3-10). La primera vez hace falta conexión para bajar `surefire-junit-platform` |
 | PostgreSQL real | **Sin probar.** Docker Desktop no estaba corriendo (no responde el engine). El backend de test usa H2 en modo PostgreSQL. `ddl-auto: update` en el SN: no hay migraciones. *(actualizado)* **Backend probado** contra PostgreSQL 16 (base vacía en Docker): crea el esquema y corren `seed-backend-demo.sql` y `seed-indicadores-demo.sql`, que es idempotente. El SN sigue sin probar. Ojo: una base creada antes de E3 no sirve con el modelo actual (`emergencias.municipio` era texto); hay que recrearla (`docker compose down -v`). |
-| Flujo con Bonita 10.4 | *(actualizado)* **Probado** con `RescueSync` 1.1 desplegado en Studio local: registrar emergencia, desglosar y publicar convocatoria completan sus tareas en Bonita, y el dashboard calcula los tiempos de esas etapas. |
+| Flujo con Bonita 10.4 | *(actualizado)* **Probado** con `RescueSync` 1.1 desplegado en Studio local: registrar emergencia, desglosar y publicar convocatoria completan sus tareas en Bonita, y el dashboard calcula los tiempos de esas etapas. *(prueba E3-10)* **Probado con 1.2 hasta el final**: evaluación, selección, compromiso, liberación, ciclo de selección, cierre del caso y stock insuficiente. Ver el informe |
 
 ## 5. Decisiones tomadas
 
@@ -126,15 +129,18 @@ Las estimaciones son un primer cálculo.
 | 5 | Monitorear despliegue: endpoint, estado `EN_EJECUCION` y pantalla | 5 h | | |
 | 6 | Finalizar actividad: endpoint, `FINALIZADA`/`CERRADA` y pantalla | 5 h | | |
 | 7 | Resolver cobertura incompleta: endpoint y pantalla (`REFORMULADO`) | 6 h | | |
-| 8 | Reflejar en el backend los resultados de Evaluar, Comprometer y Liberar | 4 h | | |
+| 8 | Reflejar en el backend los resultados de Evaluar, Comprometer y Liberar. *(prueba E3-10)* Confirmado: un caso terminado en Bonita deja la emergencia en `CONVOCATORIA_PUBLICADA` y la oferta en `PENDIENTE` | 4 h | | |
 | 9 | Completar tareas de Bonita desde el backend después de "Publicar convocatoria" | 3 h | | |
 | 10 | Timeout y warm-up del conector ante arranque en frío de Render | 2 h | | |
 | 11 | CUIT obligatorio en ONGs y migración de datos | 2 h | | |
 | 12 | Catálogo de unidades de medida (decisión D1) | 4 h | | |
 | 13 | Permisos y roles nuevos (decisión D3). *(actualizado)* `DIRECTIVO`/`CONSULTAR_INDICADORES` hecho; faltan los cuatro permisos de tareas | 1,5 h | | |
 | 14 | ~~Dashboard de indicadores (decisión D2)~~ *(actualizado)* **Hecho** | — | | |
-| 15 | Diagnosticar `configurar_bonita_e3_10.py --check` y alinear README con JDK 17 | 1 h | | |
-| 16 | Importar el `.bos` en otra máquina y probar el flujo completo | 3 h | | |
+| 15 | Diagnosticar `configurar_bonita_e3_10.py --check` y alinear README con JDK 17. *(prueba E3-10)* Diagnóstico hecho (ver ajuste 22); falta alinear el README | 30 min | | |
+| 16 | ~~Importar el `.bos` en otra máquina y probar el flujo completo~~ *(prueba E3-10)* **Hecho**, salvo caída temporal de la API nacional y reintentos | — | | |
 | 17 | Probar backend y SN contra PostgreSQL real. *(actualizado)* Backend **hecho**; falta el SN | 1 h | | |
 | 18 | *(nuevo)* Alta de emergencia: atrapar cualquier error de Bonita (no solo `BonitaIntegrationException`), así el alta no se deshace si falla la sincronización | 30 min | | |
-| 19 | *(nuevo)* Tiempos del dashboard: verificar contra un caso terminado en Bonita (`archivedCase`, duración total). Depende de los ajustes 3 a 9 | 30 min | | |
+| 19 | ~~*(nuevo)* Tiempos del dashboard: verificar contra un caso terminado en Bonita (`archivedCase`, duración total)~~ *(prueba E3-10)* **Hecho**: `archivedCase?f=sourceObjectId=` devuelve el caso terminado con `start` y `end_date` | — | | |
+| 20 | *(prueba E3-10)* **Decisión de cobertura de lotes.** Proceso: contrato en "Evaluar cobertura de lotes" con una decisión de tres valores (`COMPLETA`, `PARCIAL`, `SIN_COBERTURA`) y una condición distinta por salida del gateway. Backend: endpoint del centro coordinador que registre la decisión, actualice los estados con `HistorialEstadoService` y complete la tarea. Front: pantalla de cobertura por lote. **Bloquea el camino normal del proceso** | 6 h | | |
+| 21 | *(prueba E3-10)* **Validación de "Seleccionar oferta".** Hoy está en un script de operación: una oferta inválida deja la tarea `failed` y el caso trabado. Pasarla a la restricción del contrato (Bonita responde 400 y la tarea sigue disponible) o validar en el backend antes de ejecutar (junto con el ajuste 3) | 1 h | | |
+| 22 | *(prueba E3-10)* **`configurar_bonita_e3_10.py` y la versión de Python.** Con Python anterior a 3.13, regenerar el `.bos` escribe saltos de línea literales en los atributos y rompe el script Groovy de "Seleccionar oferta". Hacer que el script escape `\n` por su cuenta, o que exija Python 3.13 o posterior | 30 min | | |
