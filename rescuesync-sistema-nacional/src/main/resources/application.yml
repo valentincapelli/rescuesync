@@ -46,6 +46,9 @@ app:
 springdoc:
   swagger-ui:
     path: /swagger-ui.html
+    # Los métodos de cada grupo en el orden del controller (el orden de los grupos lo fija OpenApiConfig).
+    operations-sorter: method
+    display-request-duration: true
 
 management:
   endpoints:

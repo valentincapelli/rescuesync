@@ -1,5 +1,6 @@
 package com.grupo21.rescuesync;
 
+import jakarta.servlet.http.Cookie;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.grupo21.rescuesync.model.Rol;
 import com.grupo21.rescuesync.model.Usuario;
@@ -217,7 +218,7 @@ class LoteIntegrationTests {
         crearLote(id, "PERSONAL_VOLUNTARIO", "Paramédicos", 5, "personas");
         crearLote(id, "ALIMENTOS", "Raciones", 1000, "raciones");
 
-        mockMvc.perform(conTokenOperador(post(convocatoria(id))))
+        mockMvc.perform(conTokenCentro(post(convocatoria(id))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(id))
                 .andExpect(jsonPath("$.estado").value("CONVOCATORIA_PUBLICADA"));
@@ -231,7 +232,7 @@ class LoteIntegrationTests {
     void noSePuedePublicarSinLotes() throws Exception {
         long id = registrarEmergencia();
 
-        mockMvc.perform(conTokenOperador(post(convocatoria(id))))
+        mockMvc.perform(conTokenCentro(post(convocatoria(id))))
                 .andExpect(status().isConflict());
         mockMvc.perform(conTokenCentro(get(EMERGENCIAS + "/" + id)))
                 .andExpect(jsonPath("$.estado").value("REGISTRADA"));
@@ -241,15 +242,15 @@ class LoteIntegrationTests {
     void noSePuedePublicarDosVeces() throws Exception {
         long id = registrarEmergencia();
         crearLote(id, "ALIMENTOS", "Raciones", 1000, "raciones");
-        mockMvc.perform(conTokenOperador(post(convocatoria(id)))).andExpect(status().isOk());
+        mockMvc.perform(conTokenCentro(post(convocatoria(id)))).andExpect(status().isOk());
 
-        mockMvc.perform(conTokenOperador(post(convocatoria(id))))
+        mockMvc.perform(conTokenCentro(post(convocatoria(id))))
                 .andExpect(status().isConflict());
     }
 
     @Test
     void publicarUnaEmergenciaInexistenteDevuelve404() throws Exception {
-        mockMvc.perform(conTokenOperador(post(convocatoria(999999))))
+        mockMvc.perform(conTokenCentro(post(convocatoria(999999))))
                 .andExpect(status().isNotFound());
     }
 
@@ -257,7 +258,7 @@ class LoteIntegrationTests {
     void despuesDePublicarNoSePuedenModificarLotes() throws Exception {
         long id = registrarEmergencia();
         long loteId = crearLote(id, "ALIMENTOS", "Raciones", 1000, "raciones");
-        mockMvc.perform(conTokenOperador(post(convocatoria(id)))).andExpect(status().isOk());
+        mockMvc.perform(conTokenCentro(post(convocatoria(id)))).andExpect(status().isOk());
 
         mockMvc.perform(conTokenCentro(post(lotes(id))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -286,7 +287,7 @@ class LoteIntegrationTests {
                         .content(oferta)))
                 .andExpect(status().isConflict());
 
-        mockMvc.perform(conTokenOperador(post(convocatoria(id)))).andExpect(status().isOk());
+        mockMvc.perform(conTokenCentro(post(convocatoria(id)))).andExpect(status().isOk());
 
         mockMvc.perform(conTokenOng(post("/api/lotes/" + loteId + "/ofertas")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -306,7 +307,7 @@ class LoteIntegrationTests {
 
     private long registrarEmergencia() throws Exception {
         MvcResult result = mockMvc.perform(post(EMERGENCIAS)
-                        .header("Authorization", "Bearer " + tokenOperador)
+                        .cookie(new Cookie("access_token", tokenOperador))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"tipoDesastre":"INUNDACION","nivelGravedad":"ALTO",
@@ -328,7 +329,7 @@ class LoteIntegrationTests {
     private long crearLote(long emergenciaId, String tipo, String descripcion,
                            int cantidad, String unidad) throws Exception {
         MvcResult result = mockMvc.perform(post(lotes(emergenciaId))
-                        .header("Authorization", "Bearer " + tokenCentro)
+                        .cookie(new Cookie("access_token", tokenCentro))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(loteJson(tipo, descripcion, cantidad, unidad)))
                 .andExpect(status().isCreated())
@@ -338,15 +339,15 @@ class LoteIntegrationTests {
     }
 
         private MockHttpServletRequestBuilder conTokenCentro(MockHttpServletRequestBuilder request) {
-                return request.header("Authorization", "Bearer " + tokenCentro);
+                return request.cookie(new Cookie("access_token", tokenCentro));
         }
 
         private MockHttpServletRequestBuilder conTokenOperador(MockHttpServletRequestBuilder request) {
-                return request.header("Authorization", "Bearer " + tokenOperador);
+                return request.cookie(new Cookie("access_token", tokenOperador));
         }
 
         private MockHttpServletRequestBuilder conTokenOng(MockHttpServletRequestBuilder request) {
-                return request.header("Authorization", "Bearer " + tokenOng);
+                return request.cookie(new Cookie("access_token", tokenOng));
         }
 
         private void crearUsuario(String email, Rol rol) {
