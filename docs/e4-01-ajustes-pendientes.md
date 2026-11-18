@@ -63,11 +63,49 @@ Propuesta: antes de la primera operación, llamar a `/actuator/health` con timeo
 | Importar `rescue-sync.bos` en otra máquina | **Sin probar.** Sí se pudo extraer el archivo y leer el diagrama. Hace falta Bonita Studio 2025.2 (el doc E3-10 es explícito en esto). |
 | PostgreSQL real | **Sin probar.** Docker Desktop no estaba corriendo (no responde el engine). El backend de test usa H2 en modo PostgreSQL. `ddl-auto: update` en el SN: no hay migraciones. |
 
-## 5. Decisiones abiertas
+## 5. Decisiones tomadas
 
-- **Unidades de medida:** catálogo cerrado (enum o tabla) en ambos sistemas, o seguir con texto libre y normalizar. El enum evita que `kg` ≠ `kilogramos` rompa el compromiso.
-- **Indicadores del dashboard:** definir cuáles salen de RescueSync (emergencias, lotes, ofertas, cobertura) y cuáles de Bonita (tiempos de tarea, casos abiertos, incidentes).
-- **Permisos nuevos:** hoy no existen para seleccionar oferta, notificar, monitorear despliegue, finalizar actividad ni ver el dashboard. Propuesta inicial, a validar: selección y notificación para el municipio; monitoreo para el centro coordinador; finalización para la ONG; dashboard para centro y municipio.
+Fecha: 2026-11-18. Las tomó Claude por delegación del equipo; quedan registradas para que el equipo las revise y, si hace falta, las cambie.
+
+### D1 — Unidades de medida: catálogo cerrado
+
+- **Decisión:** reemplazar el texto libre por un catálogo cerrado `UnidadMedida` (enum) en RescueSync, con el mismo conjunto de valores en el Sistema Nacional.
+- **Valores iniciales:** `PERSONAS`, `RACIONES`, `KILOGRAMOS`, `LITROS`, `UNIDADES`, `CAJAS`, `VEHICULOS`, `HORAS`.
+- **Por qué:** el Sistema Nacional compara por tipo de recurso y unidad, y solo normaliza mayúsculas y espacios. Con texto libre, `kg` y `kilogramos` no coinciden y el compromiso termina en incidente. Un catálogo cierra el error en el origen. `TipoRecurso` ya es un enum, así que la unidad sigue el mismo criterio.
+- **Alternativa descartada:** seguir con texto libre y normalizar mejor. No resuelve los sinónimos y obliga a mantener reglas de equivalencia en dos sistemas.
+- **Queda por hacer:** acordar la lista final con quien mantiene el Sistema Nacional, migrar los lotes y recursos existentes y actualizar el formulario de lotes. Ver ajuste 12.
+
+### D2 — Indicadores del dashboard: reparto por origen del dato
+
+- **Decisión:** los indicadores de negocio salen de RescueSync y los de proceso salen de Bonita.
+- **RescueSync (base de datos propia):**
+  - emergencias por estado;
+  - lotes por estado y porcentaje de cobertura (`totalOfrecido` sobre `cantidadRequerida`);
+  - ofertas recibidas, seleccionadas y finalizadas;
+  - total ofrecido por tipo de recurso.
+- **Bonita (API del proceso):**
+  - casos abiertos y cerrados;
+  - tiempo de ejecución por tarea;
+  - incidentes abiertos, es decir, fallas de los conectores.
+- **Por qué:** cada sistema es la fuente de verdad de sus datos. Así el dashboard no duplica estado ni depende de que Bonita conozca el modelo de lotes.
+- **Alternativa descartada:** leer todo desde Bonita. Obligaría a copiar lotes y ofertas a variables del proceso.
+- **Queda por hacer:** confirmar que el usuario de servicio de Bonita puede consultar la API de casos y tareas.
+
+### D3 — Permisos nuevos: según el lane del diagrama BPMN
+
+- **Decisión:** cada permiso nuevo se asigna al rol del lane donde está la tarea en el diagrama.
+
+| Permiso | Rol | Lane en el BPMN |
+| --- | --- | --- |
+| `SELECCIONAR_OFERTA` | `OPERADOR_MUNICIPAL` | Municipio |
+| `NOTIFICAR_ONG` | `OPERADOR_MUNICIPAL` | Municipio |
+| `MONITOREAR_DESPLIEGUE` | `CENTRO_COORDINADOR` | Centro Coordinador |
+| `FINALIZAR_ACTIVIDAD` | `REPRESENTANTE_ONG` | ONG |
+| `CONSULTAR_DASHBOARD` | `CENTRO_COORDINADOR` y `OPERADOR_MUNICIPAL` | No aplica |
+
+- **Por qué:** el modelo de permisos queda alineado con el proceso que ya aprobó el equipo, y no hace falta inventar excepciones. `SERVICIO_BONITA` conserva solo `CONSULTAR_OFERTAS_CONSOLIDADAS`.
+- **Ajustes:** el operador municipal solo ve las emergencias de su municipio y el representante de ONG solo finaliza ofertas de su propia ONG. Esas restricciones van en el servicio, no en el permiso.
+- **Queda por hacer:** agregar los valores a `Permiso` y asignarlos en `Rol`. Ver ajuste 13.
 
 ## 6. Lista de ajustes
 
@@ -86,9 +124,9 @@ Las estimaciones son un primer cálculo.
 | 9 | Completar tareas de Bonita desde el backend después de "Publicar convocatoria" | 3 h | | |
 | 10 | Timeout y warm-up del conector ante arranque en frío de Render | 2 h | | |
 | 11 | CUIT obligatorio en ONGs y migración de datos | 2 h | | |
-| 12 | Catálogo de unidades de medida | 4 h | | |
-| 13 | Permisos y roles nuevos | 2 h | | |
-| 14 | Dashboard de indicadores | 6 h | | |
+| 12 | Catálogo de unidades de medida (decisión D1) | 4 h | | |
+| 13 | Permisos y roles nuevos (decisión D3) | 2 h | | |
+| 14 | Dashboard de indicadores (decisión D2) | 6 h | | |
 | 15 | Diagnosticar `configurar_bonita_e3_10.py --check` y alinear README con JDK 17 | 1 h | | |
 | 16 | Importar el `.bos` en otra máquina y probar el flujo completo | 3 h | | |
 | 17 | Probar backend y SN contra PostgreSQL real | 2 h | | |
