@@ -85,6 +85,22 @@ Este formulario cubre el alta básica: la edición con trazabilidad, los consorc
 y el control temporal mediante Bonita corresponden a etapas posteriores. La ONG
 sigue identificándose por nombre, como establece el backend actual.
 
+## Dashboard de indicadores
+
+La pestaña **Dirección · Indicadores** (rol `DIRECTIVO`, usuario demo `direccion@test.com`)
+muestra los indicadores de E4 (`/api/indicadores/*`, contrato en
+`../docs/e4-indicadores-contrato.md`). Mientras el backend esté en stub, se puede usar con
+datos simulados:
+
+```bash
+VITE_INDICADORES_MOCK=true npm run dev
+```
+
+(o `VITE_INDICADORES_MOCK=true` en `.env`). Con esa variable, los datos salen de
+`src/mocks/indicadores.ts` en vez de la API; el login sigue necesitando el backend. En modo
+simulado, el filtro **Municipio (id)** acepta dos valores especiales: `900` simula Bonita no
+disponible y `901` simula un error en el bloque de consorcios.
+
 ## Configuración
 
 La URL del backend se lee de `VITE_API_URL` (ver `.env.example`). Por defecto
