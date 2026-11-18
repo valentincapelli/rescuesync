@@ -49,7 +49,8 @@ export function obtenerReporte(filtro?: FiltroIndicadores): Promise<ReporteIndic
 
 /**
  * Descarga el reporte como archivo. Devuelve el Blob; quien llama decide cómo guardarlo
- * (ej. URL.createObjectURL + <a download>). CSV y XLSX responden 501 hasta la etapa de integración.
+ * (ej. URL.createObjectURL + <a download>). El backend manda el nombre sugerido en Content-Disposition
+ * (indicadores_<desde>_<hasta>.<ext>); el front arma el mismo nombre con el filtro aplicado.
  */
 export async function descargarReporte(
   formato: FormatoReporte,

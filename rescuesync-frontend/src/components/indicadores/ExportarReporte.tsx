@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { ApiError } from '../../api/client';
 import type { FiltroIndicadores, FormatoReporte } from '../../types/indicadores';
 import { mensajeDeError } from './formato';
 import { fuenteIndicadores } from './fuenteDatos';
@@ -41,11 +40,7 @@ export function ExportarReporte({ filtro, desde, hasta }: Props) {
       const blob = await fuenteIndicadores.descargar(formato, filtro);
       guardarBlob(blob, `indicadores_${desde}_${hasta}.${extension}`);
     } catch (err) {
-      if (err instanceof ApiError && err.status === 501) {
-        setMensaje({ tipo: 'info', texto: `Formato todavía no disponible (${etiqueta}).` });
-      } else {
-        setMensaje({ tipo: 'error', texto: mensajeDeError(err, 'No se pudo descargar el reporte.') });
-      }
+      setMensaje({ tipo: 'error', texto: mensajeDeError(err, `No se pudo descargar el reporte (${etiqueta}).`) });
     } finally {
       setDescargando(null);
     }

@@ -8,8 +8,8 @@ import com.grupo21.rescuesync.dto.indicadores.ResolucionConsorciosResponse;
 import com.grupo21.rescuesync.dto.indicadores.ResumenIndicadoresResponse;
 import com.grupo21.rescuesync.dto.indicadores.SuministrosMovilizadosResponse;
 import com.grupo21.rescuesync.dto.indicadores.TiemposEtapasResponse;
-import com.grupo21.rescuesync.exception.FuncionalidadPendienteException;
 import com.grupo21.rescuesync.exception.ParametroInvalidoException;
+import com.grupo21.rescuesync.service.indicadores.ExportadorReporte;
 import com.grupo21.rescuesync.service.indicadores.IndicadorService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -17,6 +17,8 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -25,6 +27,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Locale;
 
 /**
@@ -41,7 +44,11 @@ import java.util.Locale;
 @RequiredArgsConstructor
 public class IndicadorController {
 
+    private static final MediaType XLSX =
+            MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+
     private final IndicadorService indicadorService;
+    private final ExportadorReporte exportador;
 
     @Operation(summary = "KPIs principales (datos propios + Bonita)")
     @GetMapping(value = "/resumen", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -75,21 +82,31 @@ public class IndicadorController {
     }
 
     @Operation(summary = "Reporte completo exportable",
-            description = "formato=json devuelve ReporteIndicadoresResponse. csv y xlsx se descargan como archivo "
-                    + "(hoy responden 501 hasta la etapa de integración).")
-    @ApiResponse(responseCode = "501", description = "Formato todavía no implementado")
+            description = "formato=json devuelve ReporteIndicadoresResponse. csv (separador ';', coma decimal, "
+                    + "UTF-8 con BOM) y xlsx (una hoja por sección) se descargan como archivo "
+                    + "indicadores_<desde>_<hasta>.<ext>.")
     @GetMapping("/reporte")
-    public ResponseEntity<ReporteIndicadoresResponse> reporte(
+    public ResponseEntity<?> reporte(
             @ParameterObject FiltroIndicadores filtro,
             @Parameter(description = "json | csv | xlsx") @RequestParam(defaultValue = "json") String formato
     ) {
         FormatoReporte formatoReporte = parsearFormato(formato);
-        if (formatoReporte != FormatoReporte.JSON) {
-            throw new FuncionalidadPendienteException("La exportación en " + formatoReporte + " todavía no está implementada");
-        }
+        ReporteIndicadoresResponse reporte = indicadorService.reporte(filtro);
+        return switch (formatoReporte) {
+            case JSON -> ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(reporte);
+            case CSV -> archivo(exportador.csv(reporte), new MediaType("text", "csv", StandardCharsets.UTF_8),
+                    ExportadorReporte.nombreArchivo(reporte.resumen().filtro(), "csv"));
+            case XLSX -> archivo(exportador.xlsx(reporte), XLSX,
+                    ExportadorReporte.nombreArchivo(reporte.resumen().filtro(), "xlsx"));
+        };
+    }
+
+    private static ResponseEntity<byte[]> archivo(byte[] contenido, MediaType tipo, String nombre) {
         return ResponseEntity.ok()
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(indicadorService.reporte(filtro));
+                .contentType(tipo)
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        ContentDisposition.attachment().filename(nombre).build().toString())
+                .body(contenido);
     }
 
     private static FormatoReporte parsearFormato(String formato) {

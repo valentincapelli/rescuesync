@@ -4,6 +4,7 @@ import com.grupo21.rescuesync.model.Rol;
 import com.grupo21.rescuesync.model.Usuario;
 import com.grupo21.rescuesync.security.JwtService;
 import jakarta.servlet.http.Cookie;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -16,6 +17,8 @@ import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.io.ByteArrayInputStream;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.List;
@@ -25,6 +28,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -162,13 +166,43 @@ class IndicadoresContratoIntegrationTests {
     }
 
     @Test
-    void reporteRechazaFormatoDesconocidoYMarcaPendientesCsvYXlsx() throws Exception {
+    void reporteRechazaFormatoDesconocido() throws Exception {
         mockMvc.perform(get("/api/indicadores/reporte").cookie(cookieDirectivo).param("formato", "pdf"))
                 .andExpect(status().isBadRequest());
-        mockMvc.perform(get("/api/indicadores/reporte").cookie(cookieDirectivo).param("formato", "csv"))
-                .andExpect(status().isNotImplemented());
-        mockMvc.perform(get("/api/indicadores/reporte").cookie(cookieDirectivo).param("formato", "xlsx"))
-                .andExpect(status().isNotImplemented());
+    }
+
+    @Test
+    void reporteCsvSeDescargaConNombreYSecciones() throws Exception {
+        byte[] cuerpo = mockMvc.perform(get("/api/indicadores/reporte").cookie(cookieDirectivo)
+                        .param("formato", "csv").param("desde", "2026-01-01").param("hasta", "2026-06-30"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Type", "text/csv;charset=UTF-8"))
+                .andExpect(header().string("Content-Disposition",
+                        "attachment; filename=\"indicadores_2026-01-01_2026-06-30.csv\""))
+                .andReturn().getResponse().getContentAsByteArray();
+
+        String csv = new String(cuerpo, StandardCharsets.UTF_8);
+        assertThat(csv).startsWith("﻿# Filtros\r\n");
+        assertThat(csv).contains("# Resumen\r\nIndicador;Valor\r\nEmergencias totales;0\r\n");
+        assertThat(csv).contains("Desde;2026-01-01\r\n");
+        assertThat(csv).contains("# Tiempos por etapa\r\n");
+    }
+
+    @Test
+    void reporteXlsxSeDescargaConUnaHojaPorSeccion() throws Exception {
+        byte[] cuerpo = mockMvc.perform(get("/api/indicadores/reporte").cookie(cookieDirectivo).param("formato", "XLSX"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Type",
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .andExpect(header().string("Content-Disposition", org.hamcrest.Matchers.endsWith(".xlsx\"")))
+                .andReturn().getResponse().getContentAsByteArray();
+
+        try (XSSFWorkbook libro = new XSSFWorkbook(new ByteArrayInputStream(cuerpo))) {
+            assertThat(libro.getNumberOfSheets()).isEqualTo(9);
+            assertThat(libro.getSheetName(0)).isEqualTo("Filtros");
+            assertThat(libro.getSheetName(1)).isEqualTo("Resumen");
+            assertThat(libro.getSheet("Tiempos por etapa").getLastRowNum()).isEqualTo(6);
+        }
     }
 
     @Test

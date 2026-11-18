@@ -308,10 +308,33 @@ export function mockReporte(filtro?: FiltroIndicadores): ReporteIndicadores {
   };
 }
 
-/** Igual que el backend hoy: JSON anda, CSV y XLSX responden 501. */
+/**
+ * JSON completo; CSV reducido (resumen y proyectos) con el mismo formato que el backend
+ * (separador ';', coma decimal, BOM). Excel no se genera en modo de prueba: para probarlo, usar el backend.
+ */
 export function mockDescargarReporte(formato: FormatoReporte, filtro?: FiltroIndicadores): Blob {
-  if (formato !== 'json') {
-    throw new ApiError(`Exportación a ${formato.toUpperCase()} pendiente de implementar.`, 501);
+  const reporte = mockReporte(filtro);
+  if (formato === 'json') {
+    return new Blob([JSON.stringify(reporte, null, 2)], { type: 'application/json' });
   }
-  return new Blob([JSON.stringify(mockReporte(filtro), null, 2)], { type: 'application/json' });
+  if (formato === 'csv') {
+    const celda = (v: unknown) => (v === null || v === undefined ? '' : String(v).replace('.', ','));
+    const r = reporte.resumen;
+    const lineas = [
+      '# Resumen',
+      'Indicador;Valor',
+      `Emergencias totales;${celda(r.emergenciasTotales)}`,
+      `Emergencias activas;${celda(r.emergenciasActivas)}`,
+      `% finalizados;${celda(r.porcentajeFinalizados)}`,
+      `% resolución por consorcio;${celda(r.porcentajeResolucionConsorcio)}`,
+      '',
+      '# Proyectos',
+      'Id;Tipo de desastre;Municipio;Estado;% cobertura',
+      ...reporte.proyectos.proyectos.map((p) =>
+        [p.id, p.tipoDesastre, p.municipio, p.estado, celda(p.porcentajeCobertura)].join(';'),
+      ),
+    ];
+    return new Blob(['﻿' + lineas.join('\r\n') + '\r\n'], { type: 'text/csv;charset=utf-8' });
+  }
+  throw new ApiError('En modo de prueba (VITE_INDICADORES_MOCK) no se genera Excel.', 501);
 }

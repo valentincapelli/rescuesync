@@ -44,11 +44,6 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.BAD_REQUEST, ex.getMessage(), req);
     }
 
-    @ExceptionHandler(FuncionalidadPendienteException.class)
-    public ResponseEntity<ApiError> handlePendiente(FuncionalidadPendienteException ex, HttpServletRequest req) {
-        return build(HttpStatus.NOT_IMPLEMENTED, ex.getMessage(), req);
-    }
-
     @ExceptionHandler(BonitaIntegrationException.class)
     public ResponseEntity<ApiError> handleBonita(BonitaIntegrationException ex, HttpServletRequest req) {
         log.error("Error de integración con Bonita", ex);
