@@ -70,6 +70,13 @@ export async function apiPut<T>(
   return send<T>('PUT', path, body);
 }
 
+export async function apiPatch<T>(
+  path: string,
+  body?: unknown,
+): Promise<T> {
+  return send<T>('PATCH', path, body);
+}
+
 export async function apiDelete(
   path: string,
 ): Promise<void> {

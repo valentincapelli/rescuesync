@@ -73,7 +73,7 @@ public class OfertaController {
         return ResponseEntity.ok(ofertas);
     }
 
-    @PreAuthorize("hasAuthority('CONSULTAR_OFERTAS_VALIDADAS_MUNICIPIO')")
+    @PreAuthorize("hasAuthority('SELECCIONAR_OFERTAS')")
     @PutMapping("/seleccion")
     public ResponseEntity<SeleccionarOfertasResponse> seleccionarOfertas(
             @Valid @RequestBody SeleccionarOfertasRequest request,
