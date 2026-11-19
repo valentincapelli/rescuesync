@@ -1,0 +1,33 @@
+.despliegue-lista {
+  display: grid;
+  gap: 1rem;
+}
+.actividad-despliegue {
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 1rem 1.1rem;
+}
+.despliegue-encabezado {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.despliegue-encabezado h3 { margin: 0; }
+.despliegue-fechas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.5rem;
+  font-size: 0.85rem;
+}
+.despliegue-fechas dt { color: #666; }
+.despliegue-fechas dd { margin: 0.25rem 0 0; }
+.despliegue-novedades { padding-left: 1.25rem; }
+.despliegue-novedades li { margin: 0.75rem 0; }
+.despliegue-novedades p { white-space: pre-wrap; overflow-wrap: anywhere; }
+.actividad-despliegue summary { cursor: pointer; }
+.despliegues-page .form-actions { flex-wrap: wrap; }
+@media (max-width: 600px) {
+  .despliegues-page .emergencia-picker { flex-direction: column; align-items: stretch; }
+}

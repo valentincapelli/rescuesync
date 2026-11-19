@@ -17,6 +17,8 @@ El [contrato de indicadores](docs/e4-indicadores-contrato.md) define los endpoin
 
 ## Estado de E4
 
+- [Monitoreo del despliegue y finalización](docs/monitoreo-finalizacion.md): pantallas, permisos, sincronización con Bonita y requisitos para probar con E3-10.
+
 - [Relevamiento y ajustes pendientes](docs/e4-01-ajustes-pendientes.md): qué falta del proceso, decisiones del equipo y lista de ajustes.
 - [Prueba de punta a punta de E3-10](docs/e3-10-prueba-integracion.md): RescueSync 1.2 ejecutado en Bonita con el backend y el Sistema Nacional; resultados y problemas encontrados.
 

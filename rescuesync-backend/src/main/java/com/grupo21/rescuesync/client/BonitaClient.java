@@ -193,6 +193,8 @@ public class BonitaClient {
             bonitaRestClient.post()
                 .uri("/API/bpm/userTask/{taskId}/execution", taskId)
                 .headers(headers -> agregarHeadersDeSesion(headers, sesion))
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(Map.of())
                 .retrieve()
                 .toBodilessEntity();
 
@@ -259,6 +261,32 @@ public class BonitaClient {
 
             return null;
         });
+    }
+
+    // ---------------------------------------------------------------------------------------------
+    /** Ejecuta una tarea concreta. Nunca busca otra tarea homónima al reintentar. */
+    public void completarTareaPorId(String taskId) {
+        consultar("completar la tarea " + taskId, () -> withSession(sesion -> {
+            asignarTarea(taskId, obtenerUserId(sesion));
+            ejecutarTarea(taskId);
+            return null;
+        }));
+    }
+
+    /** Variables primitivas activas o archivadas; id siempre es el del caso original. */
+    public Optional<String> leerVariable(String caseId, String nombre, boolean archivada) {
+        return consultar("consultar la variable " + nombre, () -> withSession(sesion -> {
+            try {
+                Map<String, Object> variable = bonitaRestClient.get()
+                        .uri("/API/bpm/" + (archivada ? "archivedCaseVariable" : "caseVariable")
+                                + "/{id}/{nombre}", caseId, nombre)
+                        .headers(headers -> agregarHeadersDeSesion(headers, sesion))
+                        .retrieve().body(new ParameterizedTypeReference<Map<String, Object>>() {});
+                return Optional.ofNullable(variable == null ? null : variable.get("value")).map(Object::toString);
+            } catch (HttpClientErrorException.NotFound ex) {
+                return Optional.empty();
+            }
+        }));
     }
 
     // ---------------------------------------------------------------------------------------------

@@ -48,3 +48,22 @@
   border-bottom-color: #dc2626;
   font-weight: 600;
 }
+
+.notification-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  margin-left: 8px;
+
+  border-radius: 50%;
+  background-color: #dc2626;
+  color: white;
+
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+}
