@@ -5,6 +5,7 @@ import com.grupo21.rescuesync.model.EstadoEmergencia;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface EmergenciaRepository extends JpaRepository<Emergencia, Long> {
 
@@ -13,6 +14,11 @@ public interface EmergenciaRepository extends JpaRepository<Emergencia, Long> {
     List<Emergencia> findByMunicipioId(Long municipioId);
 
     boolean existsByIdAndMunicipio_Id(
+            Long emergenciaId,
+            Long municipioId
+    );
+
+    Optional<Emergencia> findByIdAndMunicipio_Id(
             Long emergenciaId,
             Long municipioId
     );

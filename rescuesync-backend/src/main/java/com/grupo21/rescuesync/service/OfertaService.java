@@ -7,11 +7,14 @@ import com.grupo21.rescuesync.dto.ofertas.SeleccionarOfertasRequest;
 import com.grupo21.rescuesync.dto.ofertas.SeleccionarOfertasResponse;
 import com.grupo21.rescuesync.exception.BusinessException;
 import com.grupo21.rescuesync.exception.ResourceNotFoundException;
+import com.grupo21.rescuesync.model.Emergencia;
+import com.grupo21.rescuesync.model.EstadoEmergencia;
 import com.grupo21.rescuesync.model.EstadoLote;
 import com.grupo21.rescuesync.model.EstadoOferta;
 import com.grupo21.rescuesync.model.Lote;
 import com.grupo21.rescuesync.model.Oferta;
 import com.grupo21.rescuesync.model.Ong;
+import com.grupo21.rescuesync.model.TipoNotificacion;
 import com.grupo21.rescuesync.model.Usuario;
 import com.grupo21.rescuesync.repository.EmergenciaRepository;
 import com.grupo21.rescuesync.repository.LoteRepository;
@@ -21,6 +24,7 @@ import com.grupo21.rescuesync.repository.UsuarioRepository;
 import lombok.RequiredArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -36,6 +40,7 @@ public class OfertaService {
     private final LoteRepository loteRepository;
     private final UsuarioRepository usuarioRepository;
     private final EmergenciaRepository emergenciaRepository;
+    private final NotificacionService notificacionService;
 
     @Transactional
     public OfertaResponse crear(
@@ -204,18 +209,17 @@ public class OfertaService {
 
         Long municipioId = usuario.getMunicipio().getId();
 
-        // 2. Verificar que la emergencia pertenezca al municipio
-        boolean perteneceAlMunicipio =
-                emergenciaRepository.existsByIdAndMunicipio_Id(
+        // 2. Obtener emergencia y verificar que pertenezca al municipio
+        Emergencia emergencia = emergenciaRepository
+                .findByIdAndMunicipio_Id(
                         request.emergenciaId(),
                         municipioId
+                )
+                .orElseThrow(() ->
+                        new BusinessException(
+                                "La emergencia no existe o no pertenece a su municipio"
+                        )
                 );
-
-        if (!perteneceAlMunicipio) {
-            throw new BusinessException(
-                    "La emergencia no existe o no pertenece a su municipio"
-            );
-        }
 
         // 3. Obtener ofertas evaluadas de esa emergencia
         List<Oferta> ofertasEvaluadas =
@@ -240,28 +244,102 @@ public class OfertaService {
             );
         }
 
-        // 6. Actualizar estados
+        // 6. Actualizar estados de ofertas y lotes
         int seleccionadas = 0;
         int rechazadas = 0;
+
+        Set<Long> lotesCerrados = new HashSet<>();
 
         for (Oferta oferta : ofertasEvaluadas) {
 
             if (idsSeleccionados.contains(oferta.getId())) {
+
                 oferta.setEstado(EstadoOferta.SELECCIONADA);
                 seleccionadas++;
+
+                // Cerrar el lote de la oferta seleccionada
+                Lote lote = oferta.getLote();
+
+                if (lotesCerrados.add(lote.getId())) {
+                    lote.setEstado(EstadoLote.CERRADO);
+                }
+
             } else {
                 oferta.setEstado(EstadoOferta.RECHAZADA);
                 rechazadas++;
             }
         }
 
-        // 7. Guardar cambios
+        // 7. Guardar ofertas
         ofertaRepository.saveAll(ofertasEvaluadas);
 
+        // 8. Cambiar estado de la emergencia
+        emergencia.setEstado(EstadoEmergencia.ADJUDICADA);
+
+        // 9. Crear notificaciones para las ONGs
+        crearNotificacionesPorResultado(ofertasEvaluadas, idsSeleccionados);
+
+        // 10. Respuesta
         return new SeleccionarOfertasResponse(
                 seleccionadas,
                 rechazadas
         );
+    }
+
+    private void crearNotificacionesPorResultado(
+            List<Oferta> ofertasEvaluadas,
+            Set<Long> idsSeleccionados
+    ) {
+
+        for (Oferta oferta : ofertasEvaluadas) {
+
+            boolean seleccionada = idsSeleccionados.contains(oferta.getId());
+
+            Ong ong = oferta.getOng();
+            Lote lote = oferta.getLote();
+
+            String titulo;
+            String mensaje;
+            TipoNotificacion tipo;
+
+            if (seleccionada) {
+
+                titulo = "Oferta seleccionada";
+                tipo = TipoNotificacion.OFERTA_SELECCIONADA;
+
+                mensaje = String.format(
+                        "Tu oferta #%d fue seleccionada. " +
+                        "Lote: %d. Recurso: %s. Cantidad ofrecida: %s %s.",
+                        oferta.getId(),
+                        lote.getId(),
+                        lote.getTipoRecurso(),
+                        oferta.getCantidadOfrecida(),
+                        lote.getUnidadMedida()
+                );
+
+            } else {
+
+                titulo = "Oferta rechazada";
+                tipo = TipoNotificacion.OFERTA_RECHAZADA;
+
+                mensaje = String.format(
+                        "Tu oferta #%d no fue seleccionada. " +
+                        "Lote: %d. Recurso: %s. Cantidad ofrecida: %s %s.",
+                        oferta.getId(),
+                        lote.getId(),
+                        lote.getTipoRecurso(),
+                        oferta.getCantidadOfrecida(),
+                        lote.getUnidadMedida()
+                );
+            }
+
+            notificacionService.crearNotificacion(
+                    ong,
+                    titulo,
+                    mensaje,
+                    tipo
+            );
+        }
     }
 
     private OfertaResponse toResponse(Oferta oferta) {
