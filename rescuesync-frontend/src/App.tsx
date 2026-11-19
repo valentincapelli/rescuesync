@@ -7,6 +7,7 @@ import { BackendStatus } from './components/BackendStatus';
 import { AltaEmergenciaPage } from './pages/AltaEmergenciaPage';
 import { LotesPage } from './pages/LotesPage';
 import { OfertasPage } from './pages/OfertasPage';
+import { SeleccionOfertasPage } from './pages/SeleccionOfertasPage';
 import { LoginPage } from './pages/LoginPage';
 
 import { useAuth } from './context/AuthContext';
@@ -21,6 +22,11 @@ const SECCIONES = [
   {
     id: 'municipio',
     label: 'Municipio · Registrar emergencia',
+    rol: 'OPERADOR_MUNICIPAL',
+  },
+  {
+    id: 'seleccion-ofertas',
+    label: 'Municipio · Seleccionar ofertas',
     rol: 'OPERADOR_MUNICIPAL',
   },
   {
@@ -167,6 +173,10 @@ function App() {
 
       {seccionActual === 'municipio' && (
         <AltaEmergenciaPage />
+      )}
+
+      {seccionActual === 'seleccion-ofertas' && (
+        <SeleccionOfertasPage />
       )}
 
       {seccionActual === 'ccr' && <LotesPage />}

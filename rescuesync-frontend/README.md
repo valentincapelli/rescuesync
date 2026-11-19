@@ -26,6 +26,8 @@ App web de RescueSync (DSSD 2026 – Grupo 21).
    (todavía no hay login, eso llega con E2-10):
 
    - **Municipio · Registrar emergencia**: formulario de alta de emergencia (E2-05).
+   - **Municipio · Seleccionar ofertas**: revisión por emergencia y lote de ofertas
+     validadas, con selección de las que se aceptan.
    - **Centro Coordinador · Lotes**: desglose de una emergencia en lotes y
      publicación de la convocatoria (E2-07, ver abajo).
    - **ONG · Ofertas**: carga básica de ofertas sobre lotes publicados (E2-09).
@@ -84,6 +86,15 @@ se limpia el formulario anterior y se ignoran respuestas de consultas anteriores
 Este formulario cubre el alta básica: la edición con trazabilidad, los consorcios
 y el control temporal mediante Bonita corresponden a etapas posteriores. La ONG
 sigue identificándose por nombre, como establece el backend actual.
+
+## Selección municipal de ofertas
+
+La pestaña **Municipio · Seleccionar ofertas** usa `GET /api/ofertas/evaluadas`,
+que devuelve las emergencias del municipio en `COBERTURA_EVALUADA` o
+`COBERTURA_PARCIAL`, agrupadas por lote y con sus ofertas evaluadas. Se puede
+seleccionar más de una oferta entre los lotes de una emergencia. Al confirmar,
+`PUT /api/ofertas/seleccion` acepta las seleccionadas y rechaza las restantes
+ofertas evaluadas de esa emergencia.
 
 ## Dashboard de indicadores
 

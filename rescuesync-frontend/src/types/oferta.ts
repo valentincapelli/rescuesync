@@ -1,5 +1,7 @@
 // Espeja EstadoOferta y los DTOs de ofertas del backend
 // (com.grupo21.rescuesync.model / dto.ofertas).
+import type { EstadoEmergencia, NivelGravedad, TipoDesastre } from './emergencia';
+import type { EstadoLote, TipoRecurso } from './lote';
 
 export type EstadoOferta =
   | 'PENDIENTE'
@@ -34,4 +36,30 @@ export interface Oferta {
   cantidadOfrecida: number;
   observaciones: string | null;
   estado: EstadoOferta;
+}
+
+export interface LoteConOfertasEvaluadas {
+  id: number;
+  tipoRecurso: TipoRecurso;
+  descripcion: string;
+  cantidadRequerida: number;
+  unidadMedida: string;
+  estado: EstadoLote;
+  ofertas: Oferta[];
+}
+
+export interface EmergenciaConOfertasEvaluadas {
+  id: number;
+  tipoDesastre: TipoDesastre;
+  nivelGravedad: NivelGravedad;
+  zonaAfectada: string;
+  descripcion: string;
+  municipio: string;
+  estado: EstadoEmergencia;
+  lotes: LoteConOfertasEvaluadas[];
+}
+
+export interface SeleccionarOfertasResponse {
+  cantidadSeleccionadas: number;
+  cantidadRechazadas: number;
 }
