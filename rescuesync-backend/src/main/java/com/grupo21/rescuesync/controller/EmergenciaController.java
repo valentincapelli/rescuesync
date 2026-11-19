@@ -1,6 +1,7 @@
 package com.grupo21.rescuesync.controller;
 
 import com.grupo21.rescuesync.dto.CrearEmergenciaRequest;
+import com.grupo21.rescuesync.dto.DecidirCoberturaRequest;
 import com.grupo21.rescuesync.dto.EmergenciaResponse;
 import com.grupo21.rescuesync.dto.LoteOfertasConsolidadasResponse;
 import com.grupo21.rescuesync.service.EmergenciaService;
@@ -63,6 +64,21 @@ public class EmergenciaController {
     @PostMapping("/{id}/convocatoria")
     public EmergenciaResponse publicarConvocatoria(@PathVariable Long id) {
         return emergenciaService.publicarConvocatoria(id);
+    }
+
+    @Operation(summary = "Registrar la decisión de cobertura de lotes",
+            description = "COMPLETA exige todos los lotes cubiertos (emergencia a COBERTURA_EVALUADA); "
+                    + "PARCIAL exige al menos uno sin cubrir (COBERTURA_PARCIAL); SIN_COBERTURA reabre la "
+                    + "convocatoria. Completa la tarea 'Evaluar cobertura de lotes' en Bonita.")
+    @PreAuthorize("hasAuthority('EVALUAR_COBERTURA')")
+    @ApiResponse(responseCode = "200", description = "Decisión registrada")
+    @ApiResponse(responseCode = "409", description = "Estado inválido o decisión inconsistente con las ofertas")
+    @PostMapping(value = "/{id}/cobertura", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public EmergenciaResponse decidirCobertura(
+            @PathVariable Long id,
+            @Valid @RequestBody DecidirCoberturaRequest request
+    ) {
+        return emergenciaService.decidirCobertura(id, request.decision());
     }
 
     @Operation(summary = "Obtener una emergencia por id")

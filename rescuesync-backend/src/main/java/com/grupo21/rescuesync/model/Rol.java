@@ -16,7 +16,8 @@ public enum Rol {
             Permiso.CONSULTAR_EMERGENCIAS,
             Permiso.CONSULTAR_LOTES,
             Permiso.CONSULTAR_OFERTAS,
-            Permiso.PUBLICAR_CONVOCATORIA
+            Permiso.PUBLICAR_CONVOCATORIA,
+            Permiso.EVALUAR_COBERTURA
     ),
 
     REPRESENTANTE_ONG(
