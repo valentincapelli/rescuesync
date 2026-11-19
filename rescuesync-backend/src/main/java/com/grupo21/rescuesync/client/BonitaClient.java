@@ -203,6 +203,14 @@ public class BonitaClient {
     }
 
     public void completarTarea(String caseId, String nombreTarea) {
+        completarTarea(caseId, nombreTarea, Map.of());
+    }
+
+    /**
+     * Completa la tarea enviando las entradas de su contrato (ej. {@code decisionCoberturaInput}).
+     * Si el contrato no se cumple Bonita responde 400 y la tarea sigue disponible.
+     */
+    public void completarTarea(String caseId, String nombreTarea, Map<String, Object> contrato) {
         String taskId = null;
 
         for (int intento = 1; intento <= 10; intento++) {
@@ -247,7 +255,7 @@ public class BonitaClient {
                     .uri("/API/bpm/userTask/{taskId}/execution", taskIdFinal)
                     .headers(headers -> agregarHeadersDeSesion(headers, sesion))
                     .contentType(MediaType.APPLICATION_JSON)
-                    .body(Map.of())
+                    .body(contrato)
                     .retrieve()
                     .toBodilessEntity();
 

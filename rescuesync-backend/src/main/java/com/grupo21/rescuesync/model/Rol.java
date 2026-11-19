@@ -19,6 +19,7 @@ public enum Rol {
             Permiso.CONSULTAR_LOTES,
             Permiso.CONSULTAR_OFERTAS,
             Permiso.PUBLICAR_CONVOCATORIA,
+            Permiso.EVALUAR_COBERTURA,
             Permiso.MONITOREAR_DESPLIEGUE
     ),
 

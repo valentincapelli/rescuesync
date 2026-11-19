@@ -2,7 +2,7 @@
 
 Fecha del relevamiento: 2026-11-18. Base: `development` con `feature/bonitaapi` (E3-10) mergeada localmente.
 
-Las columnas **Tarea E4** y **Responsable** quedan para completar en la reunión: el relevamiento no tiene los títulos de E4-02 a E4-10. Las estimaciones son una primera propuesta.
+La columna **Tarea E4** está mapeada con el grooming de la Etapa 4 (E4-02 a E4-10; los ajustes 1 y 2 cierran E4-01). **Responsable** queda para completar en la reunión. Las estimaciones son una primera propuesta.
 
 **Actualización del 18/11/2026 (tarde), acordada con el equipo:** se integró el dashboard de indicadores de E4 (contrato y detalle en [`e4-indicadores-contrato.md`](e4-indicadores-contrato.md)). Se mantiene esa implementación: las decisiones **D2** y **D3** quedan revisadas para reflejarla, el ajuste 14 está hecho y el 17 está hecho para el backend. Los cambios están marcados con *(actualizado)*.
 
@@ -27,7 +27,7 @@ El diagrama (`RescueSync 1.2`) tiene 4 lanes: Municipio, Centro Coordinador, ONG
 | Revisar y desglosar emergencia | Tarea humana; el backend la completa al publicar | `POST/PUT/DELETE .../lotes` | `LotesPage` |
 | Publicar convocatoria | Tarea humana; el backend la completa | `POST /emergencias/{id}/convocatoria` | `LotesPage` |
 | Esperar / cargar / editar ofertas | Tarea humana (ONG) | `POST/PUT /lotes/{id}/ofertas` | `OfertasPage` |
-| Período convocatorio → Evaluar cobertura de lotes | Timer + conector de ofertas consolidadas (E3-09). *(prueba E3-10)* **La tarea no tiene contrato y el gateway "¿Lotes cubiertos?" tiene tres salidas con la misma condición, que nadie modifica: siempre va a "Resolver cobertura incompleta"** | `GET .../ofertas-consolidadas`. *(prueba E3-10)* No hay endpoint para decidir la cobertura | ~~No aplica~~ *(prueba E3-10)* **No existe**: el centro coordinador no tiene dónde revisar ni decidir la cobertura. Ajuste 20 |
+| Período convocatorio → Evaluar cobertura de lotes | Timer + conector de ofertas consolidadas (E3-09). *(prueba E3-10)* ~~La tarea no tiene contrato y el gateway "¿Lotes cubiertos?" tiene tres salidas con la misma condición~~ *(E4-02)* **Resuelto**: contrato `decisionCoberturaInput`, variable `decisionCobertura` y una condición por salida. Ver [`e4-02-cobertura.md`](e4-02-cobertura.md) | `GET .../ofertas-consolidadas`. *(E4-02)* `POST /api/emergencias/{id}/cobertura` | ~~No aplica~~ *(prueba E3-10)* **No existe**: el centro coordinador no tiene dónde revisar ni decidir la cobertura. Ajuste 20 |
 | Resolver cobertura incompleta | Tarea humana | **No existe.** `EstadoLote.REFORMULADO` sin uso | **No existe** |
 | Evaluar ofertas | Service task + conector SN `EVALUAR` | No guarda el resultado (`EstadoOferta.EVALUADA` sin uso) | No aplica |
 | **Seleccionar oferta** | Tarea humana con contrato (`ofertaSeleccionadaIdInput`, `continuarSeleccionandoInput`) | **No existe** (`SELECCIONADA`/`RECHAZADA` sin uso) | **No existe** |
@@ -122,25 +122,25 @@ Las estimaciones son un primer cálculo.
 
 | # | Ajuste | Estimación | Tarea E4 | Responsable |
 | --- | --- | --- | --- | --- |
-| 1 | Push del merge de E3-10 a `development` | 10 min | | |
-| 2 | Verificar el SN en Render (`/actuator/health`, `/api/info`, `/swagger-ui.html`) | 20 min | | |
-| 3 | Seleccionar oferta: endpoint, permiso, estados y pantalla | 6 h | | |
-| 4 | Notificar a ONG y recibir notificación: endpoint, estado y pantalla | 5 h | | |
-| 5 | Monitorear despliegue: endpoint, estado `EN_EJECUCION` y pantalla | 5 h | | |
-| 6 | Finalizar actividad: endpoint, `FINALIZADA`/`CERRADA` y pantalla | 5 h | | |
-| 7 | Resolver cobertura incompleta: endpoint y pantalla (`REFORMULADO`) | 6 h | | |
-| 8 | Reflejar en el backend los resultados de Evaluar, Comprometer y Liberar. *(prueba E3-10)* Confirmado: un caso terminado en Bonita deja la emergencia en `CONVOCATORIA_PUBLICADA` y la oferta en `PENDIENTE` | 4 h | | |
-| 9 | Completar tareas de Bonita desde el backend después de "Publicar convocatoria" | 3 h | | |
-| 10 | Timeout y warm-up del conector ante arranque en frío de Render | 2 h | | |
-| 11 | CUIT obligatorio en ONGs y migración de datos | 2 h | | |
-| 12 | Catálogo de unidades de medida (decisión D1) | 4 h | | |
-| 13 | Permisos y roles nuevos (decisión D3). *(actualizado)* `DIRECTIVO`/`CONSULTAR_INDICADORES` hecho; faltan los cuatro permisos de tareas | 1,5 h | | |
-| 14 | ~~Dashboard de indicadores (decisión D2)~~ *(actualizado)* **Hecho** | — | | |
-| 15 | Diagnosticar `configurar_bonita_e3_10.py --check` y alinear README con JDK 17. *(prueba E3-10)* Diagnóstico hecho (ver ajuste 22); falta alinear el README | 30 min | | |
-| 16 | ~~Importar el `.bos` en otra máquina y probar el flujo completo~~ *(prueba E3-10)* **Hecho**, salvo caída temporal de la API nacional y reintentos | — | | |
-| 17 | Probar backend y SN contra PostgreSQL real. *(actualizado)* Backend **hecho**; falta el SN | 1 h | | |
-| 18 | *(nuevo)* Alta de emergencia: atrapar cualquier error de Bonita (no solo `BonitaIntegrationException`), así el alta no se deshace si falla la sincronización | 30 min | | |
-| 19 | ~~*(nuevo)* Tiempos del dashboard: verificar contra un caso terminado en Bonita (`archivedCase`, duración total)~~ *(prueba E3-10)* **Hecho**: `archivedCase?f=sourceObjectId=` devuelve el caso terminado con `start` y `end_date` | — | | |
-| 20 | *(prueba E3-10)* **Decisión de cobertura de lotes.** Proceso: contrato en "Evaluar cobertura de lotes" con una decisión de tres valores (`COMPLETA`, `PARCIAL`, `SIN_COBERTURA`) y una condición distinta por salida del gateway. Backend: endpoint del centro coordinador que registre la decisión, actualice los estados con `HistorialEstadoService` y complete la tarea. Front: pantalla de cobertura por lote. **Bloquea el camino normal del proceso** | 6 h | | |
-| 21 | *(prueba E3-10)* **Validación de "Seleccionar oferta".** Hoy está en un script de operación: una oferta inválida deja la tarea `failed` y el caso trabado. Pasarla a la restricción del contrato (Bonita responde 400 y la tarea sigue disponible) o validar en el backend antes de ejecutar (junto con el ajuste 3) | 1 h | | |
-| 22 | *(prueba E3-10)* **`configurar_bonita_e3_10.py` y la versión de Python.** Con Python anterior a 3.13, regenerar el `.bos` escribe saltos de línea literales en los atributos y rompe el script Groovy de "Seleccionar oferta". Hacer que el script escape `\n` por su cuenta, o que exija Python 3.13 o posterior | 30 min | | |
+| 1 | Push del merge de E3-10 a `development` | 10 min | E4-01 | |
+| 2 | Verificar el SN en Render (`/actuator/health`, `/api/info`, `/swagger-ui.html`) | 20 min | E4-01 | |
+| 3 | Seleccionar oferta: endpoint, permiso, estados y pantalla | 6 h | E4-04 | |
+| 4 | Notificar a ONG y recibir notificación: endpoint, estado y pantalla | 5 h | E4-04 | |
+| 5 | Monitorear despliegue: endpoint, estado `EN_EJECUCION` y pantalla | 5 h | E4-06 | |
+| 6 | Finalizar actividad: endpoint, `FINALIZADA`/`CERRADA` y pantalla | 5 h | E4-06 | |
+| 7 | Resolver cobertura incompleta: endpoint y pantalla (`REFORMULADO`) | 6 h | E4-02 | |
+| 8 | Reflejar en el backend los resultados de Evaluar, Comprometer y Liberar. *(prueba E3-10)* Confirmado: un caso terminado en Bonita deja la emergencia en `CONVOCATORIA_PUBLICADA` y la oferta en `PENDIENTE` | 4 h | E4-03 / E4-05 | |
+| 9 | Completar tareas de Bonita desde el backend después de "Publicar convocatoria" | 3 h | E4-04 / E4-06 | |
+| 10 | Timeout y warm-up del conector ante arranque en frío de Render | 2 h | E4-05 | |
+| 11 | CUIT obligatorio en ONGs y migración de datos | 2 h | E4-03 | |
+| 12 | Catálogo de unidades de medida (decisión D1) | 4 h | E4-05 | |
+| 13 | Permisos y roles nuevos (decisión D3). *(actualizado)* `DIRECTIVO`/`CONSULTAR_INDICADORES` hecho; faltan los cuatro permisos de tareas | 1,5 h | E4-09 | |
+| 14 | ~~Dashboard de indicadores (decisión D2)~~ *(actualizado)* **Hecho** | — | E4-07 / E4-08 | |
+| 15 | Diagnosticar `configurar_bonita_e3_10.py --check` y alinear README con JDK 17. *(prueba E3-10)* Diagnóstico hecho (ver ajuste 22); falta alinear el README | 30 min | E4-10 | |
+| 16 | ~~Importar el `.bos` en otra máquina y probar el flujo completo~~ *(prueba E3-10)* **Hecho**, salvo caída temporal de la API nacional y reintentos | — | E4-10 | |
+| 17 | Probar backend y SN contra PostgreSQL real. *(actualizado)* Backend **hecho**; falta el SN | 1 h | E4-10 | |
+| 18 | *(nuevo)* Alta de emergencia: atrapar cualquier error de Bonita (no solo `BonitaIntegrationException`), así el alta no se deshace si falla la sincronización | 30 min | E4-10 | |
+| 19 | ~~*(nuevo)* Tiempos del dashboard: verificar contra un caso terminado en Bonita (`archivedCase`, duración total)~~ *(prueba E3-10)* **Hecho**: `archivedCase?f=sourceObjectId=` devuelve el caso terminado con `start` y `end_date` | — | E4-07 | |
+| 20 | *(prueba E3-10)* **Decisión de cobertura de lotes.** Proceso: contrato en "Evaluar cobertura de lotes" con una decisión de tres valores (`COMPLETA`, `PARCIAL`, `SIN_COBERTURA`) y una condición distinta por salida del gateway. Backend: endpoint del centro coordinador que registre la decisión, actualice los estados con `HistorialEstadoService` y complete la tarea. Front: pantalla de cobertura por lote. **Bloquea el camino normal del proceso** | 6 h | E4-02 | *(E4-02)* Proceso y backend hechos y probados en Bonita ([`e4-02-cobertura.md`](e4-02-cobertura.md)). **Falta la pantalla** |
+| 21 | *(prueba E3-10)* **Validación de "Seleccionar oferta".** Hoy está en un script de operación: una oferta inválida deja la tarea `failed` y el caso trabado. Pasarla a la restricción del contrato (Bonita responde 400 y la tarea sigue disponible) o validar en el backend antes de ejecutar (junto con el ajuste 3) | 1 h | E4-04 | |
+| 22 | *(prueba E3-10)* **`configurar_bonita_e3_10.py` y la versión de Python.** Con Python anterior a 3.13, regenerar el `.bos` escribe saltos de línea literales en los atributos y rompe el script Groovy de "Seleccionar oferta". Hacer que el script escape `\n` por su cuenta, o que exija Python 3.13 o posterior | 30 min | E4-10 | |
