@@ -6,6 +6,7 @@ import { AltaEmergenciaPage } from './pages/AltaEmergenciaPage';
 import { LotesPage } from './pages/LotesPage';
 import { OfertasPage } from './pages/OfertasPage';
 import { LoginPage } from './pages/LoginPage';
+import { DesplieguesPage } from './pages/DesplieguesPage';
 
 import { useAuth } from './context/AuthContext';
 import type { Rol } from './types/auth';
@@ -29,6 +30,16 @@ const SECCIONES = [
   {
     id: 'ong',
     label: 'ONG · Ofertas',
+    rol: 'REPRESENTANTE_ONG',
+  },
+  {
+    id: 'despliegues',
+    label: 'Centro Coordinador · Despliegues',
+    rol: 'CENTRO_COORDINADOR',
+  },
+  {
+    id: 'actividades',
+    label: 'ONG · Actividades',
     rol: 'REPRESENTANTE_ONG',
   },
   {
@@ -121,6 +132,8 @@ function App() {
       {seccionActual === 'ccr' && <LotesPage />}
 
       {seccionActual === 'ong' && <OfertasPage />}
+      {seccionActual === 'despliegues' && <DesplieguesPage />}
+      {seccionActual === 'actividades' && <DesplieguesPage esOng />}
 
       {seccionActual === 'direccion' && (
         <Suspense fallback={<p>Cargando indicadores...</p>}>
