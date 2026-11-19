@@ -10,6 +10,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 
 public interface EmergenciaRepository extends JpaRepository<Emergencia, Long> {
 
@@ -17,6 +18,16 @@ public interface EmergenciaRepository extends JpaRepository<Emergencia, Long> {
 
     List<Emergencia> findByMunicipioId(Long municipioId);
 
+    boolean existsByIdAndMunicipio_Id(
+            Long emergenciaId,
+            Long municipioId
+    );
+
+    Optional<Emergencia> findByIdAndMunicipio_Id(
+            Long emergenciaId,
+            Long municipioId
+    );
+  
     /**
      * Emergencias con instancia en Bonita registradas en [inicio, fin), para los tiempos por etapa (E4).
      * municipioId y tipoDesastre son opcionales (null = sin filtrar).

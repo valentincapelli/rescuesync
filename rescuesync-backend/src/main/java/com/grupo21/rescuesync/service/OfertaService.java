@@ -3,14 +3,20 @@ package com.grupo21.rescuesync.service;
 import com.grupo21.rescuesync.dto.ofertas.CrearOfertaRequest;
 import com.grupo21.rescuesync.dto.ofertas.EditarOfertaRequest;
 import com.grupo21.rescuesync.dto.ofertas.OfertaResponse;
+import com.grupo21.rescuesync.dto.ofertas.SeleccionarOfertasRequest;
+import com.grupo21.rescuesync.dto.ofertas.SeleccionarOfertasResponse;
 import com.grupo21.rescuesync.exception.BusinessException;
 import com.grupo21.rescuesync.exception.ResourceNotFoundException;
+import com.grupo21.rescuesync.model.Emergencia;
+import com.grupo21.rescuesync.model.EstadoEmergencia;
 import com.grupo21.rescuesync.model.EstadoLote;
 import com.grupo21.rescuesync.model.EstadoOferta;
 import com.grupo21.rescuesync.model.Lote;
 import com.grupo21.rescuesync.model.Oferta;
 import com.grupo21.rescuesync.model.Ong;
+import com.grupo21.rescuesync.model.TipoNotificacion;
 import com.grupo21.rescuesync.model.Usuario;
+import com.grupo21.rescuesync.repository.EmergenciaRepository;
 import com.grupo21.rescuesync.repository.LoteRepository;
 import com.grupo21.rescuesync.repository.OfertaRepository;
 import com.grupo21.rescuesync.repository.UsuarioRepository;
@@ -18,6 +24,10 @@ import com.grupo21.rescuesync.repository.UsuarioRepository;
 import lombok.RequiredArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,6 +39,8 @@ public class OfertaService {
     private final OfertaRepository ofertaRepository;
     private final LoteRepository loteRepository;
     private final UsuarioRepository usuarioRepository;
+    private final EmergenciaRepository emergenciaRepository;
+    private final NotificacionService notificacionService;
     private final HistorialEstadoService historialEstadoService;
 
     @Transactional
@@ -150,6 +162,187 @@ public class OfertaService {
                 );
         }
         }
+    
+    @Transactional
+     public List<OfertaResponse> obtenerOfertasEvaluadasDelMunicipio(
+            String email
+    ) {
+        Usuario usuario = usuarioRepository.findByEmail(email)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Usuario no encontrado")
+                );
+
+        if (usuario.getMunicipio() == null) {
+            throw new BusinessException(
+                    "El usuario no tiene un municipio asociado"
+            );
+        }
+
+        Long municipioId = usuario.getMunicipio().getId();
+
+        List<Oferta> ofertas = ofertaRepository
+                .findByLote_Emergencia_Municipio_IdAndEstado(
+                        municipioId,
+                        EstadoOferta.EVALUADA
+                );
+
+        return ofertas.stream()
+                .map(oferta -> toResponse(oferta))
+                .toList();
+    }
+
+    @Transactional
+    public SeleccionarOfertasResponse seleccionarOfertas(
+            String email,
+            SeleccionarOfertasRequest request
+    ) {
+
+        // 1. Obtener usuario autenticado
+        Usuario usuario = usuarioRepository.findByEmail(email)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Usuario no encontrado")
+                );
+
+        if (usuario.getMunicipio() == null) {
+            throw new BusinessException(
+                    "El usuario no tiene un municipio asociado"
+            );
+        }
+
+        Long municipioId = usuario.getMunicipio().getId();
+
+        // 2. Obtener emergencia y verificar que pertenezca al municipio
+        Emergencia emergencia = emergenciaRepository
+                .findByIdAndMunicipio_Id(
+                        request.emergenciaId(),
+                        municipioId
+                )
+                .orElseThrow(() ->
+                        new BusinessException(
+                                "La emergencia no existe o no pertenece a su municipio"
+                        )
+                );
+
+        // 3. Obtener ofertas evaluadas de esa emergencia
+        List<Oferta> ofertasEvaluadas =
+                ofertaRepository.buscarConBloqueoPorEmergenciaYMunicipioYEstado(
+                        request.emergenciaId(),
+                        municipioId,
+                        EstadoOferta.EVALUADA
+                );
+
+        // 4. Obtener IDs de ofertas evaluadas
+        Set<Long> idsEvaluados = ofertasEvaluadas.stream()
+                .map(Oferta::getId)
+                .collect(Collectors.toSet());
+
+        Set<Long> idsSeleccionados = request.ofertaIds();
+
+        // 5. Validar que todas las ofertas seleccionadas
+        // pertenezcan a esta emergencia y estén evaluadas
+        if (!idsEvaluados.containsAll(idsSeleccionados)) {
+            throw new BusinessException(
+                    "Una o más ofertas no pertenecen a esta emergencia o no están evaluadas"
+            );
+        }
+
+        // 6. Actualizar estados de ofertas y lotes
+        int seleccionadas = 0;
+        int rechazadas = 0;
+
+        Set<Long> lotesCerrados = new HashSet<>();
+
+        for (Oferta oferta : ofertasEvaluadas) {
+
+            if (idsSeleccionados.contains(oferta.getId())) {
+
+                oferta.setEstado(EstadoOferta.SELECCIONADA);
+                seleccionadas++;
+
+                // Cerrar el lote de la oferta seleccionada
+                Lote lote = oferta.getLote();
+
+                if (lotesCerrados.add(lote.getId())) {
+                    lote.setEstado(EstadoLote.CERRADO);
+                }
+
+            } else {
+                oferta.setEstado(EstadoOferta.RECHAZADA);
+                rechazadas++;
+            }
+        }
+
+        // 7. Guardar ofertas
+        ofertaRepository.saveAll(ofertasEvaluadas);
+
+        // 8. Cambiar estado de la emergencia
+        emergencia.setEstado(EstadoEmergencia.ADJUDICADA);
+
+        // 9. Crear notificaciones para las ONGs
+        crearNotificacionesPorResultado(ofertasEvaluadas, idsSeleccionados);
+
+        // 10. Respuesta
+        return new SeleccionarOfertasResponse(
+                seleccionadas,
+                rechazadas
+        );
+    }
+
+    private void crearNotificacionesPorResultado(
+            List<Oferta> ofertasEvaluadas,
+            Set<Long> idsSeleccionados
+    ) {
+
+        for (Oferta oferta : ofertasEvaluadas) {
+
+            boolean seleccionada = idsSeleccionados.contains(oferta.getId());
+
+            Ong ong = oferta.getOng();
+            Lote lote = oferta.getLote();
+
+            String titulo;
+            String mensaje;
+            TipoNotificacion tipo;
+
+            if (seleccionada) {
+
+                titulo = "Oferta seleccionada";
+                tipo = TipoNotificacion.OFERTA_SELECCIONADA;
+
+                mensaje = String.format(
+                        "Tu oferta #%d fue seleccionada. " +
+                        "Lote: %d. Recurso: %s. Cantidad ofrecida: %s %s.",
+                        oferta.getId(),
+                        lote.getId(),
+                        lote.getTipoRecurso(),
+                        oferta.getCantidadOfrecida(),
+                        lote.getUnidadMedida()
+                );
+
+            } else {
+
+                titulo = "Oferta rechazada";
+                tipo = TipoNotificacion.OFERTA_RECHAZADA;
+
+                mensaje = String.format(
+                        "Tu oferta #%d no fue seleccionada. " +
+                        "Lote: %d. Recurso: %s. Cantidad ofrecida: %s %s.",
+                        oferta.getId(),
+                        lote.getId(),
+                        lote.getTipoRecurso(),
+                        oferta.getCantidadOfrecida(),
+                        lote.getUnidadMedida()
+                );
+            }
+
+            notificacionService.crearNotificacion(
+                    ong,
+                    titulo,
+                    mensaje,
+                    tipo
+            );
+        }
+    }
 
     private OfertaResponse toResponse(Oferta oferta) {
         return new OfertaResponse(
