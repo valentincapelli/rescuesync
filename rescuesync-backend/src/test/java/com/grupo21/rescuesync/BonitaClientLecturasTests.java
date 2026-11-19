@@ -48,6 +48,39 @@ class BonitaClientLecturasTests {
     }
 
     @Test
+    void variablesActivasYArchivadasUsanElIdOriginalDelCaso() {
+        esperarLogin();
+        server.expect(requestTo(BASE + "/API/bpm/caseVariable/7/ofertaSeleccionadaId"))
+                .andRespond(withSuccess("{\"name\":\"ofertaSeleccionadaId\",\"value\":11}", MediaType.APPLICATION_JSON));
+        server.expect(requestTo(BASE + "/API/bpm/archivedCaseVariable/7/ofertasProcesadasJson"))
+                .andRespond(withSuccess("{\"name\":\"ofertasProcesadasJson\",\"value\":\"[11]\"}", MediaType.APPLICATION_JSON));
+        server.expect(requestTo(BASE + "/API/bpm/caseVariable/7/inexistente"))
+                .andRespond(withStatus(HttpStatus.NOT_FOUND));
+        assertThat(client.leerVariable("7", "ofertaSeleccionadaId", false)).contains("11");
+        assertThat(client.leerVariable("7", "ofertasProcesadasJson", true)).contains("[11]");
+        assertThat(client.leerVariable("7", "inexistente", false)).isEmpty();
+        server.verify();
+    }
+
+    @Test
+    void completarPorIdAsignaYEjecutaElContratoVacioSinBuscarOtraTarea() {
+        esperarLogin();
+        server.expect(requestTo(BASE + "/API/system/session/unusedId"))
+                .andRespond(withSuccess("{\"user_id\":\"4\"}", MediaType.APPLICATION_JSON));
+        server.expect(requestTo(BASE + "/API/bpm/humanTask/17"))
+                .andExpect(method(HttpMethod.PUT))
+                .andExpect(org.springframework.test.web.client.match.MockRestRequestMatchers.content().json("{\"assigned_id\":\"4\"}"))
+                .andRespond(withStatus(HttpStatus.OK));
+        server.expect(requestTo(BASE + "/API/bpm/userTask/17/execution"))
+                .andExpect(method(HttpMethod.POST))
+                .andExpect(org.springframework.test.web.client.match.MockRestRequestMatchers.content().json("{}"))
+                .andExpect(header(HttpHeaders.CONTENT_TYPE, "application/json"))
+                .andRespond(withStatus(HttpStatus.NO_CONTENT));
+        client.completarTareaPorId("17");
+        server.verify();
+    }
+
+    @Test
     void casoActivoYCasoInexistente() {
         esperarLogin();
         server.expect(requestTo(BASE + "/API/bpm/case/7"))

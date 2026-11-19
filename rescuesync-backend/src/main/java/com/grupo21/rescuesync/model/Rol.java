@@ -18,7 +18,8 @@ public enum Rol {
             Permiso.CONSULTAR_EMERGENCIAS,
             Permiso.CONSULTAR_LOTES,
             Permiso.CONSULTAR_OFERTAS,
-            Permiso.PUBLICAR_CONVOCATORIA
+            Permiso.PUBLICAR_CONVOCATORIA,
+            Permiso.MONITOREAR_DESPLIEGUE
     ),
 
     REPRESENTANTE_ONG(
@@ -26,7 +27,8 @@ public enum Rol {
             Permiso.EDITAR_OFERTA,
             Permiso.CONSULTAR_OFERTAS,
             Permiso.CONSULTAR_LOTES,
-            Permiso.CONSULTAR_EMERGENCIAS
+            Permiso.CONSULTAR_EMERGENCIAS,
+            Permiso.FINALIZAR_ACTIVIDAD
     ),
     SERVICIO_BONITA(
             Permiso.CONSULTAR_OFERTAS_CONSOLIDADAS

@@ -9,6 +9,7 @@ import { LotesPage } from './pages/LotesPage';
 import { OfertasPage } from './pages/OfertasPage';
 import { SeleccionOfertasPage } from './pages/SeleccionOfertasPage';
 import { LoginPage } from './pages/LoginPage';
+import { DesplieguesPage } from './pages/DesplieguesPage';
 
 import { useAuth } from './context/AuthContext';
 import type { Rol } from './types/auth';
@@ -42,6 +43,15 @@ const SECCIONES = [
   {
     id: 'notificaciones',
     label: 'ONG · Notificaciones',
+    rol: 'REPRESENTANTE_ONG',
+  },
+    id: 'despliegues',
+    label: 'Centro Coordinador · Despliegues',
+    rol: 'CENTRO_COORDINADOR',
+  },
+  {
+    id: 'actividades',
+    label: 'ONG · Actividades',
     rol: 'REPRESENTANTE_ONG',
   },
   {
@@ -182,6 +192,8 @@ function App() {
       {seccionActual === 'ccr' && <LotesPage />}
 
       {seccionActual === 'ong' && <OfertasPage />}
+      {seccionActual === 'despliegues' && <DesplieguesPage />}
+      {seccionActual === 'actividades' && <DesplieguesPage esOng />}
 
       {seccionActual === 'notificaciones' && (
         <NotificacionesPage

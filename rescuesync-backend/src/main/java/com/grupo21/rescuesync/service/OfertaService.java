@@ -322,18 +322,18 @@ public class OfertaService {
 
             if (idsSeleccionados.contains(oferta.getId())) {
 
-                oferta.setEstado(EstadoOferta.SELECCIONADA);
+                historialEstadoService.cambiarEstado(oferta, EstadoOferta.SELECCIONADA);
                 seleccionadas++;
 
                 // Cerrar el lote de la oferta seleccionada
                 Lote lote = oferta.getLote();
 
                 if (lotesCerrados.add(lote.getId())) {
-                    lote.setEstado(EstadoLote.CERRADO);
+                    historialEstadoService.cambiarEstado(lote, EstadoLote.CERRADO);
                 }
 
             } else {
-                oferta.setEstado(EstadoOferta.RECHAZADA);
+                historialEstadoService.cambiarEstado(oferta, EstadoOferta.RECHAZADA);
                 rechazadas++;
             }
         }
@@ -342,7 +342,7 @@ public class OfertaService {
         ofertaRepository.saveAll(ofertasEvaluadas);
 
         // 8. Cambiar estado de la emergencia
-        emergencia.setEstado(EstadoEmergencia.ADJUDICADA);
+        historialEstadoService.cambiarEstado(emergencia, EstadoEmergencia.ADJUDICADA);
 
         // 9. Crear notificaciones para las ONGs
         crearNotificacionesPorResultado(ofertasEvaluadas, idsSeleccionados);
