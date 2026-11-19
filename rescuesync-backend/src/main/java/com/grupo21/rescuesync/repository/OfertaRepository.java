@@ -40,4 +40,7 @@ public interface OfertaRepository extends JpaRepository<Oferta, Long> {
             @Param("municipioId") Long municipioId,
             @Param("estado") EstadoOferta estado
     );
+    @Query("select o from Oferta o join fetch o.ong join o.lote l "
+            + "where l.emergencia.id = :emergenciaId order by l.id, o.id")
+    List<Oferta> findConOngByEmergenciaId(@Param("emergenciaId") Long emergenciaId);
 }

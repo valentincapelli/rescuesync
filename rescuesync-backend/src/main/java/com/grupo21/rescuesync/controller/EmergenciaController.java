@@ -2,6 +2,7 @@ package com.grupo21.rescuesync.controller;
 
 import com.grupo21.rescuesync.dto.CrearEmergenciaRequest;
 import com.grupo21.rescuesync.dto.EmergenciaResponse;
+import com.grupo21.rescuesync.dto.LoteOfertasConsolidadasResponse;
 import com.grupo21.rescuesync.service.EmergenciaService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -69,5 +70,14 @@ public class EmergenciaController {
     @GetMapping("/{id}")
     public EmergenciaResponse obtener(@PathVariable Long id) {
         return emergenciaService.obtener(id);
+    }
+
+    @Operation(summary = "Obtener las ofertas consolidadas por lote de una emergencia")
+    @ApiResponse(responseCode = "200", description = "Lotes con sus ofertas y total ofrecido")
+    @ApiResponse(responseCode = "404", description = "Emergencia inexistente")
+    @PreAuthorize("hasAnyAuthority('CONSULTAR_EMERGENCIAS', 'CONSULTAR_OFERTAS_CONSOLIDADAS')")
+    @GetMapping("/{emergenciaId}/ofertas-consolidadas")
+    public List<LoteOfertasConsolidadasResponse> ofertasConsolidadas(@PathVariable Long emergenciaId) {
+        return emergenciaService.ofertasConsolidadas(emergenciaId);
     }
 }

@@ -44,6 +44,13 @@ bonita:
   username: ${BONITA_USER:walter.bates}
   password: ${BONITA_PASSWORD:bpm}
   process-name: ${BONITA_PROCESS:RescueSync}
+  # Si Bonita no responde en este tiempo, la llamada falla (evita requests colgados).
+  connect-timeout: ${BONITA_CONNECT_TIMEOUT:5s}
+  read-timeout: ${BONITA_READ_TIMEOUT:15s}
+  indicadores:
+    # Caché por caso de los tiempos por etapa (E4). Los casos archivados no cambian y duran más.
+    cache-ttl: ${BONITA_INDICADORES_CACHE_TTL:5m}
+    cache-ttl-archivados: ${BONITA_INDICADORES_CACHE_TTL_ARCHIVADOS:12h}
 
 springdoc:
   swagger-ui:

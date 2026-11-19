@@ -17,10 +17,12 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 /**
  * Cliente de la REST API de Bonita Engine (no confundir con nuestra propia API).
@@ -247,6 +249,115 @@ public class BonitaClient {
 
             return null;
         });
+    }
+
+    // ---------------------------------------------------------------------------------------------
+    // Consultas de solo lectura para los indicadores (E4, tiempos por etapa).
+    //
+    // Rutas, filtros y nombres de campos de la REST API de Bonita (BPM API: case, archivedCase,
+    // archivedFlowNode). archivedFlowNode verificado contra Bonita Runtime 10.4 el 18/11/2026; ver
+    // el Javadoc de TiemposBonitaService.
+    //
+    // Errores: un 404 se informa como "no existe" (Optional vacío); cualquier otro error HTTP o de
+    // conexión se traduce a BonitaIntegrationException. El 401 lo resuelve withSession.
+    // ---------------------------------------------------------------------------------------------
+
+    /** Tamaño de página para las búsquedas paginadas ({@code c}). */
+    static final int TAMANIO_PAGINA = 100;
+    /** Tope de páginas por búsqueda, para no quedar en un loop si Bonita ignora {@code p}. */
+    static final int MAXIMO_PAGINAS = 50;
+
+    /** Caso activo: {@code GET /API/bpm/case/{caseId}}. Vacío si Bonita responde 404. */
+    public Optional<BonitaCasoInfo> buscarCaso(String caseId) {
+        return consultar("consultar el caso " + caseId, () -> withSession(sesion -> {
+            try {
+                BonitaCasoInfo caso = bonitaRestClient.get()
+                        .uri("/API/bpm/case/{id}", caseId)
+                        .headers(headers -> agregarHeadersDeSesion(headers, sesion))
+                        .retrieve()
+                        .body(BonitaCasoInfo.class);
+                return Optional.ofNullable(caso);
+            } catch (HttpClientErrorException.NotFound ex) {
+                return Optional.<BonitaCasoInfo>empty();
+            }
+        }));
+    }
+
+    /**
+     * Caso archivado (terminado): {@code GET /API/bpm/archivedCase?f=sourceObjectId={caseId}}.
+     * Si hay más de un registro, prefiere el que tiene {@code end_date}. Vacío si el caso no terminó.
+     */
+    public Optional<BonitaCasoInfo> buscarCasoArchivado(String caseId) {
+        return consultar("consultar el caso archivado " + caseId, () -> withSession(sesion -> {
+            List<BonitaCasoInfo> archivados = bonitaRestClient.get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/API/bpm/archivedCase")
+                            .queryParam("p", "0")
+                            .queryParam("c", "10")
+                            .queryParam("f", "sourceObjectId=" + caseId)
+                            .build())
+                    .headers(headers -> agregarHeadersDeSesion(headers, sesion))
+                    .retrieve()
+                    .body(new ParameterizedTypeReference<List<BonitaCasoInfo>>() {});
+            if (archivados == null || archivados.isEmpty()) {
+                return Optional.<BonitaCasoInfo>empty();
+            }
+            return archivados.stream()
+                    .filter(caso -> caso.end_date() != null && !caso.end_date().isBlank())
+                    .findFirst()
+                    .or(() -> Optional.of(archivados.get(0)));
+        }));
+    }
+
+    /**
+     * Todos los registros archivados de los flow nodes de un caso:
+     * {@code GET /API/bpm/archivedFlowNode?f=caseId={caseId}&p=..&c=..}, recorriendo páginas hasta que
+     * una venga incompleta (o vacía).
+     *
+     * <p>Se usa {@code archivedFlowNode} y no {@code archivedActivity}: verificado contra Bonita 10.4,
+     * {@code archivedActivity} devuelve solo el registro {@code completed} de cada tarea, mientras que
+     * {@code archivedFlowNode} trae uno por cada cambio de estado ({@code initializing}, {@code ready},
+     * {@code completed}) con el mismo {@code sourceObjectId}, que es lo que necesita el cálculo de
+     * duración. También incluye eventos y gateways; esos no están en ninguna etapa y se ignoran.
+     */
+    public List<BonitaActividadArchivada> listarActividadesArchivadas(String caseId) {
+        return consultar("listar las actividades archivadas del caso " + caseId, () -> {
+            List<BonitaActividadArchivada> todas = new ArrayList<>();
+            for (int pagina = 0; pagina < MAXIMO_PAGINAS; pagina++) {
+                final int p = pagina;
+                List<BonitaActividadArchivada> lote = withSession(sesion -> bonitaRestClient.get()
+                        .uri(uriBuilder -> uriBuilder
+                                .path("/API/bpm/archivedFlowNode")
+                                .queryParam("p", String.valueOf(p))
+                                .queryParam("c", String.valueOf(TAMANIO_PAGINA))
+                                .queryParam("f", "caseId=" + caseId)
+                                .build())
+                        .headers(headers -> agregarHeadersDeSesion(headers, sesion))
+                        .retrieve()
+                        .body(new ParameterizedTypeReference<List<BonitaActividadArchivada>>() {}));
+                if (lote == null || lote.isEmpty()) {
+                    return todas;
+                }
+                todas.addAll(lote);
+                if (lote.size() < TAMANIO_PAGINA) {
+                    return todas;
+                }
+            }
+            log.warn("Se alcanzó el tope de {} páginas de actividades archivadas para el caso {}",
+                    MAXIMO_PAGINAS, caseId);
+            return todas;
+        });
+    }
+
+    /** Ejecuta una consulta de solo lectura traduciendo los errores del RestClient. */
+    private <T> T consultar(String descripcion, Supplier<T> consulta) {
+        try {
+            return consulta.get();
+        } catch (BonitaIntegrationException ex) {
+            throw ex;
+        } catch (RestClientException ex) {
+            throw new BonitaIntegrationException("No se pudo " + descripcion + " en Bonita", ex);
+        }
     }
 
     /**

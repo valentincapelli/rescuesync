@@ -16,6 +16,7 @@ usuarios:
 - representante2.cruzroja@test.com
 - representante1.caritas@test.com
 - centro.coordinador@test.com
+- direccion@test.com (DIRECTIVO, dashboard de indicadores)
 
 contraseña para todos: 123456
 
@@ -204,6 +205,28 @@ VALUES (
     'centro.coordinador@test.com',
     '$2a$10$t/lBm30PnGdPv.yO2p7I1uOvVzyETP2koP05uGH5.kjpiE1Wjg0ba',
     'CENTRO_COORDINADOR',
+    NULL,
+    NULL
+);
+
+
+-- 8. Personal directivo (dashboard de indicadores, E4).
+-- En una base creada antes de E4, aplicar primero scripts/usuarios_rol_directivo.sql.
+INSERT INTO usuarios (
+    created_at,
+    updated_at,
+    email,
+    password_hash,
+    rol,
+    ong_id,
+    municipio_id
+)
+VALUES (
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP,
+    'direccion@test.com',
+    '$2a$10$t/lBm30PnGdPv.yO2p7I1uOvVzyETP2koP05uGH5.kjpiE1Wjg0ba',
+    'DIRECTIVO',
     NULL,
     NULL
 );

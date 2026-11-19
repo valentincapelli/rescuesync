@@ -23,6 +23,7 @@ docker compose up -d --build     # PostgreSQL + API
 | http://localhost:8082/api/info | Verificar que la API está arriba |
 | http://localhost:8082/actuator/health | Health check (lo usa Render) |
 | http://localhost:8082/swagger-ui.html | Swagger UI |
+| http://localhost:8082/v3/api-docs | Contrato OpenAPI en JSON (`/v3/api-docs.yaml` para YAML) |
 
 Puertos: 8080 = Bonita, 8081 = backend de RescueSync, 8082 = esta API. La base usa el 5434 para no chocar con la de RescueSync (5433).
 
@@ -111,7 +112,7 @@ Hoy el esquema lo crea Hibernate con `JPA_DDL_AUTO=update`. Sirve para el primer
 
 ```
 src/main/java/com/grupo21/sistemanacional/
-├── config/       JPA auditing, Swagger, CORS
+├── config/       JPA auditing, Swagger/OpenAPI (OpenApiConfig), CORS
 ├── controller/   Info, Auth, Ong, Certificacion y Recurso
 ├── dto/          ApiError (mismo formato de error que rescuesync-backend), InfoResponse
 ├── exception/    GlobalExceptionHandler, BusinessException (409), ResourceNotFoundException (404),
@@ -141,6 +142,27 @@ ongs 1─N recursos 1─N compromisos
 ### Locking
 
 `RecursoRepository.findAllByIdForUpdate(ids)` hace `SELECT ... FOR UPDATE` ordenado por id, así dos compromisos sobre los mismos recursos los bloquean en el mismo orden y no hay deadlock. Se tiene que llamar dentro de un método `@Transactional`. Después, `Recurso.comprometer(n)` / `Recurso.liberar(n)` cambian el stock sobre la fila ya bloqueada; `cantidadComprometida` no tiene setter a propósito.
+
+## Documentación Swagger / OpenAPI (E3-11)
+
+La documentación se genera con springdoc a partir del código; no hay un archivo que mantener a mano. Es pública (no pide sesión) en `/swagger-ui.html`, `/v3/api-docs` y `/v3/api-docs.yaml`. En Render: `https://<servicio>.onrender.com/swagger-ui.html`.
+
+**Qué documenta**
+
+- **Seguridad:** esquema `cookieAuth` (cookie `access_token`). El login devuelve el JWT *solo* en esa cookie; el cuerpo trae usuario y rol. Los endpoints públicos (`login`, `logout`, `registro` de ONGs e `info`) figuran sin candado.
+- **Roles y errores comunes:** `OpenApiConfig` completa en cada operación una línea `Acceso:` con los roles (se leen del `@PreAuthorize`) y las respuestas 400, 401, 403 y 404 que apliquen, todas con el schema `ApiError`. No hace falta repetirlas en los controllers.
+- **Específico de cada servicio:** cada controller tiene `@Operation` (resumen y descripción), `@ApiResponse` para los códigos propios (201, 204, 409, etc.) y un ejemplo de request en `@RequestBody`.
+
+**Probar en Swagger UI:** ejecutar `POST /api/auth/login` con un usuario del seed; el navegador guarda la cookie y las demás llamadas la reenvían. El botón *Authorize* no sirve para cargar la cookie a mano.
+
+**Entregar el documento Swagger** (Entrega 3), con la API levantada:
+
+```bash
+curl http://localhost:8082/v3/api-docs      -o openapi.json
+curl http://localhost:8082/v3/api-docs.yaml -o openapi.yaml
+```
+
+**Al agregar un endpoint:** ponerle `@Operation(summary = ...)`, `@ApiResponse` para sus códigos propios y, si recibe cuerpo, un `@ExampleObject`. Si es público, `@SecurityRequirements` (vacío) y permitirlo en `SecurityConfig`. `OpenApiDocsTests` falla si un endpoint de `/api` queda sin resumen.
 
 ## Gestión de ONGs, certificaciones y recursos
 

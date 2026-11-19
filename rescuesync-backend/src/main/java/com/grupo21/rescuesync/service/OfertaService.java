@@ -41,6 +41,7 @@ public class OfertaService {
     private final UsuarioRepository usuarioRepository;
     private final EmergenciaRepository emergenciaRepository;
     private final NotificacionService notificacionService;
+    private final HistorialEstadoService historialEstadoService;
 
     @Transactional
     public OfertaResponse crear(
@@ -87,6 +88,7 @@ public class OfertaService {
         oferta.setEstado(EstadoOferta.PENDIENTE);
 
         Oferta guardada = ofertaRepository.save(oferta);
+        historialEstadoService.registrarAlta(guardada);
 
         return toResponse(guardada);
         }

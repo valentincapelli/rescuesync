@@ -1,5 +1,6 @@
 package com.grupo21.rescuesync;
 
+import jakarta.servlet.http.Cookie;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -95,7 +96,7 @@ class EmergenciaIntegrationTests {
     void altaPersisteTodosLosDatosYPermiteConsultarlosYListarlos() throws Exception {
         Instant antesDelAlta = Instant.now();
         MvcResult result = mockMvc.perform(post(URL)
-                        .header("Authorization", "Bearer " + tokenOperador)
+                        .cookie(new Cookie("access_token", tokenOperador))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(ALTA_VALIDA))
                 .andExpect(status().isCreated())
@@ -128,12 +129,12 @@ class EmergenciaIntegrationTests {
         assertThat(fila.get("updated_at")).isEqualTo(fila.get("created_at"));
 
         mockMvc.perform(get(result.getResponse().getHeader("Location"))
-                        .header("Authorization", "Bearer " + tokenCentro))
+                        .cookie(new Cookie("access_token", tokenCentro)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(id))
                 .andExpect(jsonPath("$.municipio").value("La Plata"))
                 .andExpect(jsonPath("$.descripcion").value(response.get("descripcion").asText()));
-        mockMvc.perform(get(URL).header("Authorization", "Bearer " + tokenCentro))
+        mockMvc.perform(get(URL).cookie(new Cookie("access_token", tokenCentro)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[0].id").value(id));
@@ -149,7 +150,7 @@ class EmergenciaIntegrationTests {
         JsonNode response = registrar(request);
 
         mockMvc.perform(get(URL + "/" + response.get("id").asLong())
-                        .header("Authorization", "Bearer " + tokenCentro))
+                        .cookie(new Cookie("access_token", tokenCentro)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.tipoDesastre").value(tipoDesastre))
                 .andExpect(jsonPath("$.nivelGravedad").value(nivelGravedad));
@@ -162,7 +163,7 @@ class EmergenciaIntegrationTests {
         JsonNode response = registrar(request);
 
         mockMvc.perform(get(URL + "/" + response.get("id").asLong())
-                        .header("Authorization", "Bearer " + tokenCentro))
+                        .cookie(new Cookie("access_token", tokenCentro)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.municipio").value(NOMBRE_MUNICIPIO))
                 .andExpect(jsonPath("$.zonaAfectada").value(request.get("zonaAfectada").asText()));
@@ -208,7 +209,7 @@ class EmergenciaIntegrationTests {
         request.set(campo, objectMapper.readTree(valorJson));
 
         mockMvc.perform(post(URL)
-                        .header("Authorization", "Bearer " + tokenOperador)
+                        .cookie(new Cookie("access_token", tokenOperador))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
@@ -228,7 +229,7 @@ class EmergenciaIntegrationTests {
     @ValueSource(strings = {"", "null", "{", "[]"})
     void rechazaCuerposAusentesOMalformadosSinPersistir(String cuerpo) throws Exception {
         mockMvc.perform(post(URL)
-                        .header("Authorization", "Bearer " + tokenOperador)
+                        .cookie(new Cookie("access_token", tokenOperador))
                         .contentType(MediaType.APPLICATION_JSON).content(cuerpo))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status").value(400))
@@ -239,7 +240,7 @@ class EmergenciaIntegrationTests {
     @Test
     void rechazaContenidoNoSoportadoCon415SinPersistir() throws Exception {
         mockMvc.perform(post(URL)
-                        .header("Authorization", "Bearer " + tokenOperador)
+                        .cookie(new Cookie("access_token", tokenOperador))
                         .contentType(MediaType.TEXT_PLAIN).content(ALTA_VALIDA))
                 .andExpect(status().isUnsupportedMediaType())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
@@ -253,7 +254,7 @@ class EmergenciaIntegrationTests {
     @Test
     void rechazaAcceptIncompatibleCon406AntesDeGuardar() throws Exception {
         mockMvc.perform(post(URL)
-                        .header("Authorization", "Bearer " + tokenOperador)
+                        .cookie(new Cookie("access_token", tokenOperador))
                         .contentType(MediaType.APPLICATION_JSON)
                         .accept(MediaType.APPLICATION_XML)
                         .content(ALTA_VALIDA))
@@ -286,7 +287,7 @@ class EmergenciaIntegrationTests {
         assertThat(Instant.parse(nueva.get("createdAt").asText())).isBetween(antesDelAlta, Instant.now());
         assertThat(cantidadEmergencias()).isEqualTo(2);
         mockMvc.perform(get(URL + "/" + idOriginal)
-                        .header("Authorization", "Bearer " + tokenCentro))
+                        .cookie(new Cookie("access_token", tokenCentro)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.municipio").value("La Plata"))
                 .andExpect(jsonPath("$.estado").value("REGISTRADA"));
@@ -295,7 +296,7 @@ class EmergenciaIntegrationTests {
     @Test
     void devuelve404SiNoExisteLaEmergencia() throws Exception {
         mockMvc.perform(get(URL + "/" + Long.MAX_VALUE)
-                        .header("Authorization", "Bearer " + tokenCentro))
+                        .cookie(new Cookie("access_token", tokenCentro)))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.status").value(404))
                 .andExpect(jsonPath("$.path").value(URL + "/" + Long.MAX_VALUE));
@@ -304,7 +305,7 @@ class EmergenciaIntegrationTests {
     @Test
     void devuelve400SiElIdNoEsNumerico() throws Exception {
         mockMvc.perform(get(URL + "/invalido")
-                        .header("Authorization", "Bearer " + tokenCentro))
+                        .cookie(new Cookie("access_token", tokenCentro)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status").value(400))
                 .andExpect(jsonPath("$.path").value(URL + "/invalido"));
@@ -314,7 +315,7 @@ class EmergenciaIntegrationTests {
     void laEmergenciaCreadaPermiteRegistrarLotes() throws Exception {
         long id = registrar(altaValida()).get("id").asLong();
         mockMvc.perform(post(URL + "/" + id + "/lotes")
-                        .header("Authorization", "Bearer " + tokenCentro)
+                        .cookie(new Cookie("access_token", tokenCentro))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"tipoRecurso":"ALIMENTOS","descripcion":"Raciones de alimento",
@@ -327,7 +328,7 @@ class EmergenciaIntegrationTests {
         assertThat(jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM lotes WHERE emergencia_id = ?", Long.class, id)).isEqualTo(1);
         mockMvc.perform(get(URL + "/" + id)
-                        .header("Authorization", "Bearer " + tokenCentro))
+                        .cookie(new Cookie("access_token", tokenCentro)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(id));
     }
@@ -347,7 +348,7 @@ class EmergenciaIntegrationTests {
 
     private JsonNode registrar(ObjectNode request) throws Exception {
         MvcResult result = mockMvc.perform(post(URL)
-                                                .header("Authorization", "Bearer " + tokenOperador)
+                                                .cookie(new Cookie("access_token", tokenOperador))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated()).andReturn();
@@ -356,7 +357,7 @@ class EmergenciaIntegrationTests {
 
     private void verificarErrorDeCampo(ObjectNode request, String campo) throws Exception {
         mockMvc.perform(post(URL)
-                                                .header("Authorization", "Bearer " + tokenOperador)
+                                                .cookie(new Cookie("access_token", tokenOperador))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())

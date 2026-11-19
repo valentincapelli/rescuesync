@@ -18,9 +18,15 @@ app:
   version: test
   cors:
     allowed-origins: http://localhost:5173
+  convocatoria:
+    plazo-ms: 172800000
 
 bonita:
   base-url: http://localhost:8080/bonita
   username: test
   password: test
   process-name: RescueSync
+
+jwt:
+  secret: test-signing-key-for-integration-tests-32bytes
+  expiration: 86400000

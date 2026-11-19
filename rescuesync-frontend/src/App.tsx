@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import './App.css';
 
 import { BackendStatus } from './components/BackendStatus';
@@ -9,6 +9,11 @@ import { LoginPage } from './pages/LoginPage';
 
 import { useAuth } from './context/AuthContext';
 import type { Rol } from './types/auth';
+
+// El dashboard trae recharts: se carga aparte para no agrandar el bundle de las otras secciones.
+const IndicadoresPage = lazy(() =>
+  import('./pages/IndicadoresPage').then((m) => ({ default: m.IndicadoresPage })),
+);
 
 const SECCIONES = [
   {
@@ -25,6 +30,11 @@ const SECCIONES = [
     id: 'ong',
     label: 'ONG · Ofertas',
     rol: 'REPRESENTANTE_ONG',
+  },
+  {
+    id: 'direccion',
+    label: 'Dirección · Indicadores',
+    rol: 'DIRECTIVO',
   },
 ] as const;
 
@@ -111,6 +121,12 @@ function App() {
       {seccionActual === 'ccr' && <LotesPage />}
 
       {seccionActual === 'ong' && <OfertasPage />}
+
+      {seccionActual === 'direccion' && (
+        <Suspense fallback={<p>Cargando indicadores...</p>}>
+          <IndicadoresPage />
+        </Suspense>
+      )}
     </>
   );
 }
@@ -125,6 +141,9 @@ function getSeccionInicial(rol: Rol): Seccion | null {
 
     case 'REPRESENTANTE_ONG':
       return 'ong';
+
+    case 'DIRECTIVO':
+      return 'direccion';
 
     default:
       return null;
