@@ -3,6 +3,8 @@ package com.grupo21.rescuesync.service;
 import com.grupo21.rescuesync.dto.ofertas.CrearOfertaRequest;
 import com.grupo21.rescuesync.dto.ofertas.EditarOfertaRequest;
 import com.grupo21.rescuesync.dto.ofertas.OfertaResponse;
+import com.grupo21.rescuesync.dto.ofertas.OfertasEvaluadasEmergenciaResponse;
+import com.grupo21.rescuesync.dto.ofertas.OfertasEvaluadasEmergenciaResponse.LoteEvaluado;
 import com.grupo21.rescuesync.dto.ofertas.SeleccionarOfertasRequest;
 import com.grupo21.rescuesync.dto.ofertas.SeleccionarOfertasResponse;
 import com.grupo21.rescuesync.exception.BusinessException;
@@ -24,9 +26,13 @@ import com.grupo21.rescuesync.repository.UsuarioRepository;
 import lombok.RequiredArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
@@ -163,8 +169,8 @@ public class OfertaService {
         }
         }
     
-    @Transactional
-     public List<OfertaResponse> obtenerOfertasEvaluadasDelMunicipio(
+    @Transactional(readOnly = true)
+     public List<OfertasEvaluadasEmergenciaResponse> obtenerOfertasEvaluadasDelMunicipio(
             String email
     ) {
         Usuario usuario = usuarioRepository.findByEmail(email)
@@ -186,8 +192,61 @@ public class OfertaService {
                         EstadoOferta.EVALUADA
                 );
 
-        return ofertas.stream()
-                .map(oferta -> toResponse(oferta))
+        Map<Long, Emergencia> emergencias = new TreeMap<>();
+        Map<Long, Map<Long, Lote>> lotesPorEmergencia = new TreeMap<>();
+        Map<Long, Map<Long, List<OfertaResponse>>> ofertasPorEmergencia = new TreeMap<>();
+
+        for (Oferta oferta : ofertas) {
+            Emergencia emergencia = oferta.getLote().getEmergencia();
+            if (emergencia.getEstado() != EstadoEmergencia.COBERTURA_EVALUADA
+                    && emergencia.getEstado() != EstadoEmergencia.COBERTURA_PARCIAL) {
+                continue;
+            }
+
+            Long emergenciaId = emergencia.getId();
+            Long loteId = oferta.getLote().getId();
+            emergencias.put(emergenciaId, emergencia);
+            lotesPorEmergencia
+                    .computeIfAbsent(emergenciaId, id -> new TreeMap<>())
+                    .put(loteId, oferta.getLote());
+            ofertasPorEmergencia
+                    .computeIfAbsent(emergenciaId, id -> new TreeMap<>())
+                    .computeIfAbsent(loteId, id -> new ArrayList<>())
+                    .add(toResponse(oferta));
+        }
+
+        return emergencias.entrySet().stream()
+                .map(entry -> {
+                    Emergencia emergencia = entry.getValue();
+                    Long emergenciaId = entry.getKey();
+                    List<LoteEvaluado> lotes = lotesPorEmergencia.get(emergenciaId)
+                            .entrySet()
+                            .stream()
+                            .map(loteEntry -> {
+                                Lote lote = loteEntry.getValue();
+                                return new LoteEvaluado(
+                                        lote.getId(),
+                                        lote.getTipoRecurso(),
+                                        lote.getDescripcion(),
+                                        lote.getCantidadRequerida(),
+                                        lote.getUnidadMedida(),
+                                        lote.getEstado(),
+                                        ofertasPorEmergencia.get(emergenciaId).get(lote.getId())
+                                );
+                            })
+                            .toList();
+
+                    return new OfertasEvaluadasEmergenciaResponse(
+                            emergenciaId,
+                            emergencia.getTipoDesastre(),
+                            emergencia.getNivelGravedad(),
+                            emergencia.getZonaAfectada(),
+                            emergencia.getDescripcion(),
+                            emergencia.getMunicipio().getNombre(),
+                            emergencia.getEstado(),
+                            lotes
+                    );
+                })
                 .toList();
     }
 
@@ -222,6 +281,13 @@ public class OfertaService {
                                 "La emergencia no existe o no pertenece a su municipio"
                         )
                 );
+
+        if (emergencia.getEstado() != EstadoEmergencia.COBERTURA_EVALUADA
+                && emergencia.getEstado() != EstadoEmergencia.COBERTURA_PARCIAL) {
+            throw new BusinessException(
+                    "La emergencia no está disponible para seleccionar ofertas"
+            );
+        }
 
         // 3. Obtener ofertas evaluadas de esa emergencia
         List<Oferta> ofertasEvaluadas =
@@ -299,6 +365,7 @@ public class OfertaService {
 
             Ong ong = oferta.getOng();
             Lote lote = oferta.getLote();
+            Emergencia emergencia = lote.getEmergencia();
 
             String titulo;
             String mensaje;
@@ -308,32 +375,32 @@ public class OfertaService {
 
                 titulo = "Oferta seleccionada";
                 tipo = TipoNotificacion.OFERTA_SELECCIONADA;
-
-                mensaje = String.format(
-                        "Tu oferta #%d fue seleccionada. " +
-                        "Lote: %d. Recurso: %s. Cantidad ofrecida: %s %s.",
-                        oferta.getId(),
-                        lote.getId(),
-                        lote.getTipoRecurso(),
-                        oferta.getCantidadOfrecida(),
-                        lote.getUnidadMedida()
-                );
-
             } else {
 
                 titulo = "Oferta rechazada";
                 tipo = TipoNotificacion.OFERTA_RECHAZADA;
-
-                mensaje = String.format(
-                        "Tu oferta #%d no fue seleccionada. " +
-                        "Lote: %d. Recurso: %s. Cantidad ofrecida: %s %s.",
-                        oferta.getId(),
-                        lote.getId(),
-                        lote.getTipoRecurso(),
-                        oferta.getCantidadOfrecida(),
-                        lote.getUnidadMedida()
-                );
             }
+
+            String resultado = seleccionada
+                    ? "fue seleccionada"
+                    : "no fue seleccionada";
+            mensaje = String.format(
+                    "Tu oferta #%d %s. Municipio: %s. Emergencia #%d, zona: %s. " +
+                    "Lote #%d: %s — %s (requerido: %d %s). " +
+                    "Tu aporte: %d %s.",
+                    oferta.getId(),
+                    resultado,
+                    emergencia.getMunicipio().getNombre(),
+                    emergencia.getId(),
+                    emergencia.getZonaAfectada(),
+                    lote.getId(),
+                    nombreLegible(lote.getTipoRecurso().name()),
+                    lote.getDescripcion(),
+                    lote.getCantidadRequerida(),
+                    lote.getUnidadMedida(),
+                    oferta.getCantidadOfrecida(),
+                    lote.getUnidadMedida()
+            );
 
             notificacionService.crearNotificacion(
                     ong,
@@ -342,6 +409,11 @@ public class OfertaService {
                     tipo
             );
         }
+    }
+
+    private String nombreLegible(String valor) {
+        String nombre = valor.toLowerCase(Locale.ROOT).replace('_', ' ');
+        return nombre.substring(0, 1).toUpperCase(Locale.ROOT) + nombre.substring(1);
     }
 
     private OfertaResponse toResponse(Oferta oferta) {

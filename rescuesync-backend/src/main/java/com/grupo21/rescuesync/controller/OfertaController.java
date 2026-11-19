@@ -3,6 +3,7 @@ package com.grupo21.rescuesync.controller;
 import com.grupo21.rescuesync.dto.ofertas.CrearOfertaRequest;
 import com.grupo21.rescuesync.dto.ofertas.EditarOfertaRequest;
 import com.grupo21.rescuesync.dto.ofertas.OfertaResponse;
+import com.grupo21.rescuesync.dto.ofertas.OfertasEvaluadasEmergenciaResponse;
 import com.grupo21.rescuesync.dto.ofertas.SeleccionarOfertasRequest;
 import com.grupo21.rescuesync.dto.ofertas.SeleccionarOfertasResponse;
 import com.grupo21.rescuesync.service.OfertaService;
@@ -27,14 +28,14 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/lotes/{loteId}/ofertas")
+@RequestMapping("/api")
 @RequiredArgsConstructor
 public class OfertaController {
 
     private final OfertaService ofertaService;
 
     @PreAuthorize("hasAuthority('CREAR_OFERTA')")
-    @PostMapping
+    @PostMapping("/lotes/{loteId}/ofertas")
     public ResponseEntity<OfertaResponse> crear(
             @PathVariable Long loteId,
             @Valid @RequestBody CrearOfertaRequest request,
@@ -49,7 +50,7 @@ public class OfertaController {
     }
 
     @PreAuthorize("hasAuthority('EDITAR_OFERTA')")
-    @PutMapping("/{ofertaId}")
+    @PutMapping("/lotes/{loteId}/ofertas/{ofertaId}")
     public ResponseEntity<OfertaResponse> editar(
             @PathVariable Long ofertaId,
             @Valid @RequestBody EditarOfertaRequest request,
@@ -61,11 +62,11 @@ public class OfertaController {
     }
 
     @PreAuthorize("hasAuthority('CONSULTAR_OFERTAS_VALIDADAS_MUNICIPIO')")
-    @GetMapping("/evaluadas")
-    public ResponseEntity<List<OfertaResponse>> obtenerOfertasEvaluadas(
+    @GetMapping("/ofertas/evaluadas")
+    public ResponseEntity<List<OfertasEvaluadasEmergenciaResponse>> obtenerOfertasEvaluadas(
             @AuthenticationPrincipal UserDetails userDetails
     ) {
-        List<OfertaResponse> ofertas =
+        List<OfertasEvaluadasEmergenciaResponse> ofertas =
                 ofertaService.obtenerOfertasEvaluadasDelMunicipio(
                         userDetails.getUsername()
                 );
@@ -73,8 +74,8 @@ public class OfertaController {
         return ResponseEntity.ok(ofertas);
     }
 
-    @PreAuthorize("hasAuthority('CONSULTAR_OFERTAS_VALIDADAS_MUNICIPIO')")
-    @PutMapping("/seleccion")
+    @PreAuthorize("hasAuthority('SELECCIONAR_OFERTAS')")
+    @PutMapping("/ofertas/seleccion")
     public ResponseEntity<SeleccionarOfertasResponse> seleccionarOfertas(
             @Valid @RequestBody SeleccionarOfertasRequest request,
             @AuthenticationPrincipal UserDetails userDetails

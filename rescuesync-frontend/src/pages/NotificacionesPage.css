@@ -1,0 +1,157 @@
+
+.notificaciones-page {
+  width: 100%;
+  color: var(--foreground);
+}
+
+.notificaciones-page h2,
+.notificaciones-page h3 {
+  color: var(--foreground);
+}
+
+.notificaciones-page p {
+  color: var(--muted-foreground);
+}
+
+.notificaciones-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.2rem;
+}
+
+.notificaciones-header p {
+  margin-bottom: 0;
+}
+
+.notificaciones-resumen {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding: 0.8rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--background);
+  color: var(--foreground);
+}
+
+.notificaciones-resumen span {
+  color: var(--foreground);
+}
+
+.notificaciones-pendientes {
+  color: rgb(227, 7, 19) !important;
+  font-weight: 600;
+}
+
+.notificaciones-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.notificacion-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--background);
+  color: var(--foreground);
+}
+
+.notificacion-card.no-leida {
+  border-left: 4px solid rgb(227, 7, 19);
+}
+
+.notificacion-card.leida {
+  opacity: 0.85;
+}
+
+.notificacion-contenido {
+  flex: 1;
+  min-width: 0;
+}
+
+.notificacion-titulo {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.6rem;
+}
+
+.notificacion-tipo,
+.notificacion-nueva {
+  display: inline-block;
+  padding: 0.25rem 0.6rem;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.notificacion-tipo.seleccionada {
+  color: #166534;
+  background: #dcfce7;
+}
+
+.notificacion-tipo.rechazada,
+.notificacion-nueva {
+  color: #991b1b;
+  background: #fee2e2;
+}
+
+.notificacion-contenido h3 {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+}
+
+.notificacion-contenido p {
+  margin-bottom: 0.6rem;
+  overflow-wrap: anywhere;
+  color: var(--foreground);
+}
+
+.notificacion-contenido time {
+  color: var(--muted-foreground);
+  font-size: 0.85rem;
+}
+
+.notificacion-marcar-leida {
+  flex-shrink: 0;
+  padding: 0.65rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--background);
+  color: var(--foreground);
+  cursor: pointer;
+}
+
+.notificacion-marcar-leida:hover:not(:disabled) {
+  border-color: rgb(227, 7, 19);
+}
+
+.notificacion-marcar-leida:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+@media (max-width: 600px) {
+  .notificaciones-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .notificacion-card {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .notificacion-marcar-leida {
+    align-self: flex-start;
+  }
+}

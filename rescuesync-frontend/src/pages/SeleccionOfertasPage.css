@@ -1,0 +1,55 @@
+.seleccion-ofertas-page .form-field select {
+  width: 100%;
+  min-width: 0;
+}
+
+.lotes-seleccion {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.lote-seleccion {
+  min-width: 0;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 0.9rem 1rem;
+}
+
+.lote-seleccion legend {
+  padding: 0 0.35rem;
+  font-weight: 600;
+}
+
+.lote-seleccion > p {
+  margin: 0.3rem 0;
+}
+
+.lote-seleccion input[type='checkbox'] {
+  width: 1rem;
+  height: 1rem;
+  accent-color: #dc2626;
+}
+
+.confirmar-seleccion {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px dashed #dc2626;
+  border-radius: 8px;
+}
+
+.confirmar-seleccion p {
+  margin: 0;
+}
+
+@media (max-width: 600px) {
+  .seleccion-ofertas-page .emergencia-picker,
+  .confirmar-seleccion {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

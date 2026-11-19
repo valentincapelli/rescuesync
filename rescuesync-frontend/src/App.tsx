@@ -1,10 +1,13 @@
-import { lazy, Suspense, useState } from 'react';
+import { lazy, Suspense, useState, useEffect } from 'react';
 import './App.css';
+import { contarNoLeidas } from './api/notificaciones';
+import { NotificacionesPage } from './pages/NotificacionesPage';
 
 import { BackendStatus } from './components/BackendStatus';
 import { AltaEmergenciaPage } from './pages/AltaEmergenciaPage';
 import { LotesPage } from './pages/LotesPage';
 import { OfertasPage } from './pages/OfertasPage';
+import { SeleccionOfertasPage } from './pages/SeleccionOfertasPage';
 import { LoginPage } from './pages/LoginPage';
 import { DesplieguesPage } from './pages/DesplieguesPage';
 
@@ -23,6 +26,11 @@ const SECCIONES = [
     rol: 'OPERADOR_MUNICIPAL',
   },
   {
+    id: 'seleccion-ofertas',
+    label: 'Municipio · Seleccionar ofertas',
+    rol: 'OPERADOR_MUNICIPAL',
+  },
+  {
     id: 'ccr',
     label: 'Centro Coordinador · Lotes',
     rol: 'CENTRO_COORDINADOR',
@@ -33,6 +41,10 @@ const SECCIONES = [
     rol: 'REPRESENTANTE_ONG',
   },
   {
+    id: 'notificaciones',
+    label: 'ONG · Notificaciones',
+    rol: 'REPRESENTANTE_ONG',
+  },
     id: 'despliegues',
     label: 'Centro Coordinador · Despliegues',
     rol: 'CENTRO_COORDINADOR',
@@ -60,6 +72,41 @@ function App() {
   } = useAuth();
 
   const [seccion, setSeccion] = useState<Seccion | null>(null);
+  const [notificacionesNoLeidas, setNotificacionesNoLeidas] = useState(0);
+
+  useEffect(() => {
+    if (!user || user.rol !== 'REPRESENTANTE_ONG') {
+      setNotificacionesNoLeidas(0);
+      return;
+    }
+
+    let activo = true;
+
+    async function actualizarContador() {
+      try {
+        const cantidad = await contarNoLeidas();
+
+        if (activo) {
+          setNotificacionesNoLeidas(cantidad);
+        }
+      } catch (error) {
+        console.error('Error al consultar notificaciones:', error);
+      }
+    }
+
+    void actualizarContador();
+
+    // Actualizar el contador cada 60 segundos.
+    const intervalo = window.setInterval(
+      () => void actualizarContador(),
+      60_000,
+    );
+
+    return () => {
+      activo = false;
+      window.clearInterval(intervalo);
+    };
+  }, [user]);
 
   if (loading) {
     return <p>Cargando sesión...</p>;
@@ -121,6 +168,15 @@ function App() {
             onClick={() => setSeccion(s.id)}
           >
             {s.label}
+
+            {s.id === 'notificaciones' &&
+              notificacionesNoLeidas > 0 && (
+                <span className="notification-badge">
+                  {notificacionesNoLeidas > 99
+                    ? '99+'
+                    : notificacionesNoLeidas}
+                </span>
+              )}
           </button>
         ))}
       </nav>
@@ -129,11 +185,27 @@ function App() {
         <AltaEmergenciaPage />
       )}
 
+      {seccionActual === 'seleccion-ofertas' && (
+        <SeleccionOfertasPage />
+      )}
+
       {seccionActual === 'ccr' && <LotesPage />}
 
       {seccionActual === 'ong' && <OfertasPage />}
       {seccionActual === 'despliegues' && <DesplieguesPage />}
       {seccionActual === 'actividades' && <DesplieguesPage esOng />}
+
+      {seccionActual === 'notificaciones' && (
+        <NotificacionesPage
+          onNotificacionesChange={() => {
+            void contarNoLeidas()
+              .then(setNotificacionesNoLeidas)
+              .catch((err) =>
+                console.error('Error al actualizar el contador:', err),
+              );
+          }}
+        />
+      )}
 
       {seccionActual === 'direccion' && (
         <Suspense fallback={<p>Cargando indicadores...</p>}>
