@@ -41,8 +41,28 @@ public class DespliegueService {
     public List<DespliegueResponse> propias(String email, boolean actualizar) {
         List<DespliegueResponse> actuales = registro.propias(email);
         if (!actualizar) return actuales;
-        for (Long id : registro.casosPropios(email)) sincronizarCaso(id);
+        sincronizarCasos(registro.casosPropios(email));
         return registro.propias(email);
+    }
+
+    /**
+     * Sincroniza cada caso por separado: un caso que falla (por ejemplo, uno que ya no existe en
+     * Bonita) no debe impedir actualizar los demás. Si fallan todos se propaga el primer error, para
+     * que una caída real de Bonita siga informándose y no parezca un éxito.
+     */
+    private void sincronizarCasos(List<Long> emergenciaIds) {
+        RuntimeException primerError = null;
+        int fallidos = 0;
+        for (Long id : emergenciaIds) {
+            try {
+                sincronizarCaso(id);
+            } catch (RuntimeException ex) {
+                fallidos++;
+                if (primerError == null) primerError = ex;
+                log.warn("No se pudo sincronizar el seguimiento de la emergencia {}: {}", id, ex.getMessage());
+            }
+        }
+        if (primerError != null && fallidos == emergenciaIds.size()) throw primerError;
     }
 
     public DespliegueResponse registrar(Long ofertaId, String email, TipoNovedadDespliegue tipo, String observacion) {
