@@ -175,6 +175,27 @@ public class BonitaClient {
         });
     }
 
+    /** Devuelve todas las tareas ready del nombre dado; el coordinador exige exactamente una. */
+    public List<String> buscarTareasActivas(String caseId, String nombreTarea) {
+        return consultar("buscar tareas de selección", () -> {
+            List<String> ids = new ArrayList<>();
+            for (int pagina = 0; pagina < MAXIMO_PAGINAS; pagina++) {
+                final int p = pagina;
+                List<BonitaHumanTask> tareas = withSession(sesion -> bonitaRestClient.get()
+                        .uri(uri -> uri.path("/API/bpm/humanTask")
+                                .queryParam("f", "rootCaseId=" + caseId)
+                                .queryParam("p", p).queryParam("c", TAMANIO_PAGINA).build())
+                        .headers(h -> agregarHeadersDeSesion(h, sesion))
+                        .retrieve().body(new ParameterizedTypeReference<List<BonitaHumanTask>>() {}));
+                if (tareas == null || tareas.isEmpty()) return ids;
+                tareas.stream().filter(t -> nombreTarea.equals(t.name()) && "ready".equalsIgnoreCase(t.state()))
+                        .map(BonitaHumanTask::id).forEach(ids::add);
+                if (tareas.size() < TAMANIO_PAGINA) return ids;
+            }
+            throw new BonitaIntegrationException("La consulta de tareas de Bonita superó el límite de páginas", null);
+        });
+    }
+
     public void asignarTarea(String taskId, String userId) {
         withSession(sesion -> {
             bonitaRestClient.put()
@@ -266,9 +287,29 @@ public class BonitaClient {
     // ---------------------------------------------------------------------------------------------
     /** Ejecuta una tarea concreta. Nunca busca otra tarea homónima al reintentar. */
     public void completarTareaPorId(String taskId) {
+        completarTareaPorId(taskId, Map.of());
+    }
+
+    /** Ejecuta el contrato de una tarea concreta; conserva el mismo ID ante una respuesta incierta. */
+    public void completarTareaPorId(String taskId, Map<String, Object> contrato) {
+        if (taskId == null || taskId.isBlank()) {
+            throw new IllegalArgumentException("El ID de tarea de Bonita es obligatorio");
+        }
         consultar("completar la tarea " + taskId, () -> withSession(sesion -> {
-            asignarTarea(taskId, obtenerUserId(sesion));
-            ejecutarTarea(taskId);
+            String userId = obtenerUserId(sesion);
+            bonitaRestClient.put()
+                .uri("/API/bpm/humanTask/{taskId}", taskId)
+                .headers(headers -> agregarHeadersDeSesion(headers, sesion))
+                .body(Map.of("assigned_id", userId))
+                .retrieve()
+                .toBodilessEntity();
+            bonitaRestClient.post()
+                .uri("/API/bpm/userTask/{taskId}/execution", taskId)
+                .headers(headers -> agregarHeadersDeSesion(headers, sesion))
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(contrato)
+                .retrieve()
+                .toBodilessEntity();
             return null;
         }));
     }

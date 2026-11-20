@@ -3,8 +3,11 @@ package com.grupo21.rescuesync.service.despliegues;
 import com.grupo21.rescuesync.client.DespliegueBonitaClient;
 import com.grupo21.rescuesync.client.EstadoDespliegueBonita;
 import com.grupo21.rescuesync.dto.despliegues.DespliegueResponse;
+import com.grupo21.rescuesync.dto.despliegues.SeleccionOfertaEstadoResponse;
 import com.grupo21.rescuesync.exception.BonitaIntegrationException;
 import com.grupo21.rescuesync.model.TipoNovedadDespliegue;
+import com.grupo21.rescuesync.service.SeleccionBonitaCoordinador;
+import com.grupo21.rescuesync.service.SeleccionBonitaRegistro;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -19,6 +22,13 @@ import java.util.Objects;
 public class DespliegueService {
     private final DespliegueRegistroService registro;
     private final DespliegueBonitaClient bonita;
+    private final SeleccionBonitaCoordinador seleccion;
+    private final SeleccionBonitaRegistro selecciones;
+
+    public List<SeleccionOfertaEstadoResponse> listarSelecciones(Long emergenciaId, String email) {
+        registro.listar(emergenciaId, email); // Reutiliza autorización de Centro Coordinador.
+        return selecciones.estados(emergenciaId);
+    }
 
     public List<DespliegueResponse> listar(Long emergenciaId, String email, boolean actualizar) {
         // Autorizar antes de consultar sistemas externos.
@@ -75,6 +85,11 @@ public class DespliegueService {
                 estado = bonita.consultar(emergenciaId, caso.caseId());
                 registro.aplicar(emergenciaId, estado);
             }
+        }
+        try {
+            seleccion.liberacionConfirmada(emergenciaId, estado);
+        } catch (BonitaIntegrationException ex) {
+            log.warn("La siguiente selección de la emergencia {} queda pendiente", emergenciaId);
         }
     }
 }

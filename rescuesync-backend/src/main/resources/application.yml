@@ -51,6 +51,10 @@ bonita:
     # Habilitar cuando esté desplegado RescueSync 1.2 con la integración E3-10.
     sincronizacion-habilitada: ${BONITA_DESPLIEGUES_SYNC_ENABLED:false}
     intervalo-ms: ${BONITA_DESPLIEGUES_SYNC_INTERVAL_MS:30000}
+  seleccion:
+    recuperacion-habilitada: ${BONITA_SELECCION_RECOVERY_ENABLED:true}
+    intervalo-ms: ${BONITA_SELECCION_RECOVERY_INTERVAL_MS:30000}
+    maximo-casos: ${BONITA_SELECCION_RECOVERY_MAX_CASES:20}
   indicadores:
     # Caché por caso de los tiempos por etapa (E4). Los casos archivados no cambian y duran más.
     cache-ttl: ${BONITA_INDICADORES_CACHE_TTL:5m}

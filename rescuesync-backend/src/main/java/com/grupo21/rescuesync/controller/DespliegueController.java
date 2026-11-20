@@ -1,6 +1,7 @@
 package com.grupo21.rescuesync.controller;
 
 import com.grupo21.rescuesync.dto.despliegues.DespliegueResponse;
+import com.grupo21.rescuesync.dto.despliegues.SeleccionOfertaEstadoResponse;
 import com.grupo21.rescuesync.dto.despliegues.RegistrarSeguimientoRequest;
 import com.grupo21.rescuesync.model.TipoNovedadDespliegue;
 import com.grupo21.rescuesync.service.despliegues.DespliegueService;
@@ -24,6 +25,13 @@ import java.util.List;
 @RequiredArgsConstructor
 public class DespliegueController {
     private final DespliegueService servicio;
+
+    @GetMapping("/emergencias/{id}/selecciones")
+    @PreAuthorize("hasAuthority('MONITOREAR_DESPLIEGUE')")
+    public List<SeleccionOfertaEstadoResponse> selecciones(@PathVariable Long id,
+            @AuthenticationPrincipal UserDetails user) {
+        return servicio.listarSelecciones(id, user.getUsername());
+    }
 
     @GetMapping("/emergencias/{id}/despliegues")
     @PreAuthorize("hasAuthority('MONITOREAR_DESPLIEGUE')")

@@ -16,6 +16,7 @@ import org.springframework.test.web.client.RequestMatcher;
 import org.springframework.web.client.RestClient;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -77,6 +78,58 @@ class BonitaClientLecturasTests {
                 .andExpect(header(HttpHeaders.CONTENT_TYPE, "application/json"))
                 .andRespond(withStatus(HttpStatus.NO_CONTENT));
         client.completarTareaPorId("17");
+        server.verify();
+    }
+
+    @Test
+    void completarPorIdEnviaLaOfertaYLaContinuacionAlTaskExacto() {
+        esperarLogin();
+        server.expect(requestTo(BASE + "/API/system/session/unusedId"))
+                .andRespond(withSuccess("{\"user_id\":\"4\"}", MediaType.APPLICATION_JSON));
+        server.expect(requestTo(BASE + "/API/bpm/humanTask/27"))
+                .andExpect(method(HttpMethod.PUT))
+                .andRespond(withStatus(HttpStatus.OK));
+        server.expect(requestTo(BASE + "/API/bpm/userTask/27/execution"))
+                .andExpect(method(HttpMethod.POST))
+                .andExpect(org.springframework.test.web.client.match.MockRestRequestMatchers.content()
+                        .json("{\"ofertaSeleccionadaIdInput\":42,\"continuarSeleccionandoInput\":false}"))
+                .andExpect(header("X-Bonita-API-Token", "token"))
+                .andRespond(withStatus(HttpStatus.NO_CONTENT));
+
+        client.completarTareaPorId("27", Map.of(
+                "ofertaSeleccionadaIdInput", 42L,
+                "continuarSeleccionandoInput", false));
+        server.verify();
+    }
+
+    @Test
+    void busquedaEstrictaConservaTodasLasTareasReadyDelCaso() {
+        esperarLogin();
+        server.expect(conQuery("/API/bpm/humanTask", "f=rootCaseId=7", "p=0", "c=100"))
+                .andRespond(withSuccess("""
+                        [{"id":"27","name":"Seleccionar oferta","state":"ready","rootCaseId":"7"},
+                         {"id":"28","name":"Seleccionar oferta","state":"ready","rootCaseId":"7"},
+                         {"id":"29","name":"Otra tarea","state":"ready","rootCaseId":"7"}]
+                        """, MediaType.APPLICATION_JSON));
+        assertThat(client.buscarTareasActivas("7", "Seleccionar oferta")).containsExactly("27", "28");
+        server.verify();
+    }
+
+    @Test
+    void unConflictoNoDisparaOtraTarea() {
+        esperarLogin();
+        server.expect(requestTo(BASE + "/API/system/session/unusedId"))
+                .andRespond(withSuccess("{\"user_id\":\"4\"}", MediaType.APPLICATION_JSON));
+        server.expect(requestTo(BASE + "/API/bpm/humanTask/27"))
+                .andRespond(withStatus(HttpStatus.OK));
+        server.expect(requestTo(BASE + "/API/bpm/userTask/27/execution"))
+                .andRespond(withStatus(HttpStatus.CONFLICT));
+
+        assertThatThrownBy(() -> client.completarTareaPorId("27", Map.of(
+                "ofertaSeleccionadaIdInput", 42L,
+                "continuarSeleccionandoInput", false)))
+                .isInstanceOf(BonitaIntegrationException.class)
+                .hasCauseInstanceOf(org.springframework.web.client.HttpClientErrorException.Conflict.class);
         server.verify();
     }
 
