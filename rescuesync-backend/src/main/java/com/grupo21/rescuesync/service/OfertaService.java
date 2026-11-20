@@ -59,6 +59,27 @@ public class OfertaService {
     private final ApplicationEventPublisher eventos;
 
     /** Principal antes que apoyo; las evaluadas sin perfil (datos de demo) al final. */
+    /**
+     * El stock del Sistema Nacional es uno solo por ONG, tipo y unidad. Dos ofertas de la misma ONG en lotes
+     * distintos pueden entrar cada una en el stock y, sumadas, superarlo: la segunda fallaría al comprometerse.
+     */
+    private static boolean superanStockAcumulado(List<Oferta> evaluadas, Set<Long> seleccionadas) {
+        Map<String, Integer> acumulado = new java.util.HashMap<>();
+        for (Oferta oferta : evaluadas) {
+            if (!seleccionadas.contains(oferta.getId()) || oferta.getValidacion() == null
+                    || oferta.getValidacion().getStockDisponible() == null) {
+                continue;
+            }
+            String clave = oferta.getOng().getId() + "|" + oferta.getLote().getTipoRecurso() + "|"
+                    + oferta.getLote().getUnidadMedida().trim().toLowerCase(Locale.ROOT).replaceAll("\\s+", " ");
+            int total = acumulado.merge(clave, oferta.getCantidadOfrecida(), Integer::sum);
+            if (total > oferta.getValidacion().getStockDisponible()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private static final Comparator<OfertaEvaluadaResponse> PRINCIPALES_PRIMERO = Comparator
             .comparing((OfertaEvaluadaResponse oferta) ->
                     oferta.validacion() == null ? Integer.MAX_VALUE : oferta.validacion().clasificacion().ordinal())
@@ -398,6 +419,12 @@ public class OfertaService {
         if (seleccionaSinStock) {
             throw new BusinessException(
                     "Una o más ofertas superan el stock disponible de la ONG en el Sistema Nacional"
+            );
+        }
+        if (superanStockAcumulado(ofertasEvaluadas, idsSeleccionados)) {
+            throw new BusinessException(
+                    "Las ofertas seleccionadas de una misma ONG, sumadas, superan su stock disponible "
+                            + "en el Sistema Nacional"
             );
         }
 

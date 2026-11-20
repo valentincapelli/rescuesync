@@ -225,6 +225,39 @@ class ValidacionOfertasIntegrationTests {
     }
 
     @Test
+    void dosOfertasDeLaMismaOngQueEntranIndividualmenteNoSePuedenSeleccionarJuntas() throws Exception {
+        // La ONG de la oferta principal ofrece 60 en el lote 1 y 50 en un segundo lote; su stock nacional es 100.
+        long ongPrincipal = jdbcTemplate.queryForObject("SELECT ong_id FROM ofertas WHERE id = ?", Long.class, principal);
+        jdbcTemplate.update("INSERT INTO lotes (emergencia_id, tipo_recurso, descripcion, cantidad_requerida, "
+                + "unidad_medida, estado, created_at, updated_at) VALUES (?, 'ALIMENTOS', 'Raciones B', 50, "
+                + "'raciones', 'CUBIERTO', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)", emergenciaId);
+        long lote2 = ultimoId("lotes");
+        jdbcTemplate.update("INSERT INTO ofertas (lote_id, ong_id, cantidad_ofrecida, estado, created_at, updated_at) "
+                + "VALUES (?, ?, 50, 'PENDIENTE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)", lote2, ongPrincipal);
+        long segunda = ultimoId("ofertas");
+        String perfil = "{\"cuit\": \"30500000001\", \"tipoRecurso\": \"ALIMENTOS\", \"estadoHabilitacion\": \"HABILITADA\", "
+                + "\"capacidadesHabilitadas\": [{\"tipoRecurso\": \"ALIMENTOS\", \"nivelCompetencia\": \"AVANZADO\", "
+                + "\"nivelRiesgoMax\": \"CRITICO\", \"fechaVencimiento\": null}], "
+                + "\"disponibilidad\": [{\"unidadMedida\": \"raciones\", \"cantidadDisponible\": 100}]}";
+        String segundoLote = ",{\"id\": " + lote2 + ", \"tipoRecurso\": \"ALIMENTOS\", \"unidadMedida\": \"raciones\", "
+                + "\"ofertas\": [{\"id\": " + segunda + ", \"cantidadOfrecida\": 50, \"validacion\": " + perfil + "}]}]";
+        evaluacionEnBonita(evaluacionConStock(100).replaceFirst("\\]$", "") + segundoLote);
+        listar().andExpect(status().isOk());
+
+        mockMvc.perform(put("/api/ofertas/seleccion")
+                        .cookie(operador)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"emergenciaId\": " + emergenciaId + ", \"ofertaIds\": ["
+                                + principal + ", " + segunda + "]}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value("Las ofertas seleccionadas de una misma ONG, sumadas, "
+                        + "superan su stock disponible en el Sistema Nacional"));
+
+        assertEquals("EVALUADA", estadoOferta(principal));
+        assertEquals("EVALUADA", estadoOferta(segunda));
+    }
+
+    @Test
     void sinCasoEnBonitaNoConsulta() throws Exception {
         jdbcTemplate.update("UPDATE emergencias SET bonita_case_id = NULL WHERE id = ?", emergenciaId);
 
