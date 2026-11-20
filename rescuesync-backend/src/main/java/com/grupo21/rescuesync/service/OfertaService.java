@@ -14,6 +14,7 @@ import com.grupo21.rescuesync.model.Emergencia;
 import com.grupo21.rescuesync.model.EstadoEmergencia;
 import com.grupo21.rescuesync.model.EstadoLote;
 import com.grupo21.rescuesync.model.EstadoOferta;
+import com.grupo21.rescuesync.model.IntencionSeleccionBonita;
 import com.grupo21.rescuesync.model.Lote;
 import com.grupo21.rescuesync.model.Oferta;
 import com.grupo21.rescuesync.model.Ong;
@@ -22,6 +23,7 @@ import com.grupo21.rescuesync.model.Usuario;
 import com.grupo21.rescuesync.repository.EmergenciaRepository;
 import com.grupo21.rescuesync.repository.LoteRepository;
 import com.grupo21.rescuesync.repository.OfertaRepository;
+import com.grupo21.rescuesync.repository.IntencionSeleccionBonitaRepository;
 import com.grupo21.rescuesync.repository.UsuarioRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -38,6 +40,7 @@ import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
@@ -50,6 +53,8 @@ public class OfertaService {
     private final EmergenciaRepository emergenciaRepository;
     private final NotificacionService notificacionService;
     private final HistorialEstadoService historialEstadoService;
+    private final IntencionSeleccionBonitaRepository intenciones;
+    private final ApplicationEventPublisher eventos;
 
     /** Principal antes que apoyo; las evaluadas sin perfil (datos de demo) al final. */
     private static final Comparator<OfertaEvaluadaResponse> PRINCIPALES_PRIMERO = Comparator
@@ -298,6 +303,18 @@ public class OfertaService {
                         )
                 );
 
+        if (emergencia.getEstado() == EstadoEmergencia.ADJUDICADA) {
+            List<Oferta> anteriores = ofertaRepository.findConOngByEmergenciaId(request.emergenciaId());
+            Set<Long> adjudicadas = anteriores.stream()
+                    .filter(o -> o.getEstado() == EstadoOferta.SELECCIONADA)
+                    .map(Oferta::getId).collect(Collectors.toSet());
+            if (adjudicadas.equals(request.ofertaIds())
+                    && anteriores.stream().allMatch(o -> o.getEstado() == EstadoOferta.SELECCIONADA
+                            || o.getEstado() == EstadoOferta.RECHAZADA)) {
+                return new SeleccionarOfertasResponse(adjudicadas.size(), anteriores.size() - adjudicadas.size());
+            }
+        }
+
         if (emergencia.getEstado() != EstadoEmergencia.COBERTURA_EVALUADA
                 && emergencia.getEstado() != EstadoEmergencia.COBERTURA_PARCIAL) {
             throw new BusinessException(
@@ -369,11 +386,24 @@ public class OfertaService {
         // 7. Guardar ofertas
         ofertaRepository.saveAll(ofertasEvaluadas);
 
+        // La cola nace en la misma transacción que la adjudicación, sin llamadas HTTP.
+        for (Oferta oferta : ofertasEvaluadas.stream()
+                .filter(o -> idsSeleccionados.contains(o.getId()))
+                .sorted(Comparator.comparing(Oferta::getId)).toList()) {
+            if (intenciones.findByOfertaId(oferta.getId()).isEmpty()) {
+                IntencionSeleccionBonita intencion = new IntencionSeleccionBonita();
+                intencion.setOferta(oferta);
+                intenciones.save(intencion);
+            }
+        }
+
         // 8. Cambiar estado de la emergencia
         historialEstadoService.cambiarEstado(emergencia, EstadoEmergencia.ADJUDICADA);
 
         // 9. Crear notificaciones para las ONGs
         crearNotificacionesPorResultado(ofertasEvaluadas, idsSeleccionados);
+
+        eventos.publishEvent(new AdjudicacionRegistrada(request.emergenciaId()));
 
         // 10. Respuesta
         return new SeleccionarOfertasResponse(
@@ -381,6 +411,8 @@ public class OfertaService {
                 rechazadas
         );
     }
+
+    public record AdjudicacionRegistrada(Long emergenciaId) {}
 
     private void crearNotificacionesPorResultado(
             List<Oferta> ofertasEvaluadas,

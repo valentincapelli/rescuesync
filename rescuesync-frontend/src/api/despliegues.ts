@@ -1,5 +1,9 @@
 import { apiGet, apiPost } from './client';
-import type { Despliegue, TipoNovedad } from '../types/despliegue';
+import type { Despliegue, SeleccionOfertaEstado, TipoNovedad } from '../types/despliegue';
+
+export function listarSelecciones(emergenciaId: number): Promise<SeleccionOfertaEstado[]> {
+  return apiGet(`/emergencias/${emergenciaId}/selecciones`);
+}
 
 export function listarDespliegues(emergenciaId: number | null, actualizar = false): Promise<Despliegue[]> {
   const ruta = emergenciaId === null ? '/actividades/mias' : `/emergencias/${emergenciaId}/despliegues`;

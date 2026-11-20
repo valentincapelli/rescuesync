@@ -308,3 +308,20 @@ tarea. Lo cubre `BonitaRestClientConfigTests`.
 - **E2-10** ✅ Autenticación e integración inicial con Bonita: ver sección arriba (`GET /api/bonita/estado`).
 - **E2-11** ✅ Instanciar el proceso al crear una emergencia: ver sección arriba.
 - **E2-12** ⚠️ Parcial: la llamada ya manda el body de instanciación, pero sin entradas — falta definir el Contrato en Bonita Studio para mandar variables iniciales reales (ver sección arriba).
+# Recuperación de selecciones Bonita (E4-05)
+
+La adjudicación registra una intención por oferta seleccionada. La recuperación periódica
+consulta como máximo 20 emergencias por pasada, cada 30 segundos, y reusa el mismo `taskId`
+cuando una respuesta de Bonita es incierta. Los incidentes permanentes no se reintentan.
+El coordinador espera 30 segundos antes de reintentar el mismo `taskId` y limita la
+ejecución a tres intentos; al agotarlos, conserva la intención como `INCIDENTE`.
+
+- `BONITA_SELECCION_RECOVERY_ENABLED` (predeterminado `true`): habilita la recuperación.
+- `BONITA_SELECCION_RECOVERY_INTERVAL_MS` (predeterminado `30000`): intervalo en milisegundos.
+- `BONITA_SELECCION_RECOVERY_MAX_CASES` (predeterminado `20`): máximo de emergencias por pasada.
+
+La confirmación de liberación reutiliza la sincronización E4-06. Para que esa confirmación
+avance automáticamente, habilitar también `BONITA_DESPLIEGUES_SYNC_ENABLED=true`.
+Antes de desplegar con `JPA_DDL_AUTO=validate`, aplicar en la base de RescueSync
+`scripts/intenciones_seleccion_bonita_e4_05.sql`. Este script no fue ejecutado durante la tarea.
+El Centro Coordinador consulta los estados en `GET /api/emergencias/{id}/selecciones`.

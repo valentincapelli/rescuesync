@@ -7,6 +7,7 @@ import com.grupo21.rescuesync.model.Emergencia;
 import com.grupo21.rescuesync.model.EstadoEmergencia;
 import com.grupo21.rescuesync.model.EstadoLote;
 import com.grupo21.rescuesync.model.EstadoOferta;
+import com.grupo21.rescuesync.model.IntencionSeleccionBonita;
 import com.grupo21.rescuesync.model.Lote;
 import com.grupo21.rescuesync.model.Municipio;
 import com.grupo21.rescuesync.model.Oferta;
@@ -19,6 +20,8 @@ import com.grupo21.rescuesync.repository.EmergenciaRepository;
 import com.grupo21.rescuesync.repository.LoteRepository;
 import com.grupo21.rescuesync.repository.OfertaRepository;
 import com.grupo21.rescuesync.repository.UsuarioRepository;
+import com.grupo21.rescuesync.repository.IntencionSeleccionBonitaRepository;
+import org.springframework.context.ApplicationEventPublisher;
 import com.grupo21.rescuesync.service.HistorialEstadoService;
 import com.grupo21.rescuesync.service.NotificacionService;
 import com.grupo21.rescuesync.service.OfertaService;
@@ -48,6 +51,8 @@ class OfertaServiceTests {
     private EmergenciaRepository emergenciaRepository;
     private NotificacionService notificacionService;
     private OfertaService ofertaService;
+    private IntencionSeleccionBonitaRepository intenciones;
+    private ApplicationEventPublisher eventos;
 
     @BeforeEach
     void preparar() {
@@ -55,13 +60,17 @@ class OfertaServiceTests {
         usuarioRepository = mock(UsuarioRepository.class);
         emergenciaRepository = mock(EmergenciaRepository.class);
         notificacionService = mock(NotificacionService.class);
+        intenciones = mock(IntencionSeleccionBonitaRepository.class);
+        eventos = mock(ApplicationEventPublisher.class);
         ofertaService = new OfertaService(
                 ofertaRepository,
                 mock(LoteRepository.class),
                 usuarioRepository,
                 emergenciaRepository,
                 notificacionService,
-                mock(HistorialEstadoService.class)
+                mock(HistorialEstadoService.class),
+                intenciones,
+                eventos
         );
     }
 
@@ -130,6 +139,33 @@ class OfertaServiceTests {
     }
 
     @Test
+    void repetirLaMismaAdjudicacionNoDuplicaIntencionesNiNotificaciones() {
+        Municipio municipio = mock(Municipio.class);
+        when(municipio.getId()).thenReturn(21L);
+        Usuario usuario = mock(Usuario.class);
+        when(usuario.getMunicipio()).thenReturn(municipio);
+        when(usuarioRepository.findByEmail("operador@test.com")).thenReturn(Optional.of(usuario));
+        Emergencia emergencia = emergencia(100L, municipio, EstadoEmergencia.ADJUDICADA);
+        when(emergenciaRepository.findByIdAndMunicipio_Id(100L, 21L)).thenReturn(Optional.of(emergencia));
+        Oferta a = mock(Oferta.class);
+        Oferta b = mock(Oferta.class);
+        Oferta rechazada = mock(Oferta.class);
+        when(a.getId()).thenReturn(10L);
+        when(b.getId()).thenReturn(20L);
+        when(a.getEstado()).thenReturn(EstadoOferta.SELECCIONADA);
+        when(b.getEstado()).thenReturn(EstadoOferta.SELECCIONADA);
+        when(rechazada.getEstado()).thenReturn(EstadoOferta.RECHAZADA);
+        when(ofertaRepository.findConOngByEmergenciaId(100L)).thenReturn(List.of(a, b, rechazada));
+
+        var respuesta = ofertaService.seleccionarOfertas("operador@test.com",
+                new SeleccionarOfertasRequest(100L, Set.of(10L, 20L)));
+        assertThat(respuesta.cantidadSeleccionadas()).isEqualTo(2);
+        assertThat(respuesta.cantidadRechazadas()).isEqualTo(1);
+        verify(intenciones, never()).save(any());
+        verify(notificacionService, never()).crearNotificacion(any(), anyString(), anyString(), any());
+    }
+
+    @Test
     void notificacionIncluyeMunicipioEmergenciaLoteYCantidadOfrecida() {
         Municipio municipio = mock(Municipio.class);
         when(municipio.getId()).thenReturn(21L);
@@ -163,21 +199,32 @@ class OfertaServiceTests {
         when(ofertaRechazada.getLote()).thenReturn(lote);
         when(ofertaRechazada.getOng()).thenReturn(ongRechazada);
         when(ofertaRechazada.getCantidadOfrecida()).thenReturn(40);
+        Oferta otraSeleccionada = mock(Oferta.class);
+        when(otraSeleccionada.getId()).thenReturn(54L);
+        when(otraSeleccionada.getLote()).thenReturn(lote);
+        when(otraSeleccionada.getOng()).thenReturn(mock(Ong.class));
+        when(otraSeleccionada.getCantidadOfrecida()).thenReturn(30);
         when(ofertaRepository.buscarConBloqueoPorEmergenciaYMunicipioYEstado(
                 100L,
                 21L,
                 EstadoOferta.EVALUADA
-        )).thenReturn(List.of(oferta, ofertaRechazada));
+        )).thenReturn(List.of(oferta, ofertaRechazada, otraSeleccionada));
         when(emergenciaRepository.findByIdAndMunicipio_Id(100L, 21L))
                 .thenReturn(Optional.of(emergencia));
 
         ofertaService.seleccionarOfertas(
                 "operador@test.com",
-                new SeleccionarOfertasRequest(100L, Set.of(55L))
+                new SeleccionarOfertasRequest(100L, Set.of(55L, 54L))
         );
 
+        ArgumentCaptor<IntencionSeleccionBonita> guardadas = ArgumentCaptor.forClass(IntencionSeleccionBonita.class);
+        verify(intenciones, times(2)).save(guardadas.capture());
+        assertThat(guardadas.getAllValues()).extracting(i -> i.getOferta().getId())
+                .containsExactly(54L, 55L);
+        verify(eventos).publishEvent(new OfertaService.AdjudicacionRegistrada(100L));
+
         ArgumentCaptor<String> mensaje = ArgumentCaptor.forClass(String.class);
-        verify(notificacionService, times(2)).crearNotificacion(
+        verify(notificacionService, times(3)).crearNotificacion(
                 any(Ong.class),
                 anyString(),
                 mensaje.capture(),
