@@ -140,7 +140,7 @@ export function LoteForm({ editando, onSubmit, onCancelEdit }: Props) {
     <form className="emergencia-form lote-form" onSubmit={handleSubmit} noValidate>
       <h3>{editando ? `Editar lote #${editando.id}` : 'Agregar lote'}</h3>
 
-      {generalError && <p className="form-banner error">{generalError}</p>}
+      {generalError && <p className="form-banner error" role="alert">{generalError}</p>}
 
       <div className="form-row">
         <div className={`form-field ${fieldErrors.tipoRecurso ? 'has-error' : ''}`}>

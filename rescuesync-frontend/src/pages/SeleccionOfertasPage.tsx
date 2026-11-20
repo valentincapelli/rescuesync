@@ -118,8 +118,10 @@ export function SeleccionOfertasPage() {
         Array.from(ofertasSeleccionadas),
       );
       setResultado(
-        `Selección confirmada: ${respuesta.cantidadSeleccionadas} ofertas aceptadas y `
-        + `${respuesta.cantidadRechazadas} rechazadas.`,
+        `Selección confirmada: ${respuesta.cantidadSeleccionadas} `
+        + `${respuesta.cantidadSeleccionadas === 1 ? 'oferta aceptada' : 'ofertas aceptadas'} y `
+        + `${respuesta.cantidadRechazadas} `
+        + `${respuesta.cantidadRechazadas === 1 ? 'rechazada' : 'rechazadas'}.`,
       );
       setOfertasSeleccionadas(new Set());
       setRecarga((actual) => actual + 1);
@@ -177,7 +179,7 @@ export function SeleccionOfertasPage() {
       {resultado && <p className="form-banner info" role="status">{resultado}</p>}
       {cargando && <p className="muted" role="status">Cargando emergencias y ofertas…</p>}
       {!cargando && !error && emergencias.length === 0 && (
-        <p className="form-banner info">
+        <p className="form-banner info" role="status">
           No hay emergencias en cobertura evaluada o parcial con ofertas validadas para seleccionar.
         </p>
       )}
@@ -255,9 +257,9 @@ export function SeleccionOfertasPage() {
                   <details className="sin-habilitacion">
                     <summary>
                       {lote.ofertasSinHabilitacion.length === 1
-                        ? '1 oferta sin habilitación nacional'
-                        : `${lote.ofertasSinHabilitacion.length} ofertas sin habilitación nacional`}{' '}
-                      (no se pueden seleccionar)
+                        ? '1 oferta no seleccionable'
+                        : `${lote.ofertasSinHabilitacion.length} ofertas no seleccionables`}{' '}
+                      (sin habilitación nacional o con stock insuficiente)
                     </summary>
                     <ul>
                       {lote.ofertasSinHabilitacion.map((oferta) => (

@@ -56,7 +56,7 @@ export function OfertasPropias({ recarga }: { recarga: number }) {
       {aviso && <p className="form-banner success" role="status">{aviso}</p>}
       {error && <p className="form-banner error" role="alert">{error}</p>}
       {cargando ? <p role="status">Cargando tus ofertas…</p> : !error && (
-        ofertas.length === 0 ? <p className="form-banner info">Todavía no cargaste ofertas.</p> :
+        ofertas.length === 0 ? <p className="form-banner info" role="status">Todavía no cargaste ofertas.</p> :
           <div className="ofertas-propias-lista">
             {ofertas.map((propia) => (
               <article key={propia.oferta.id} className="emergencia-resumen">

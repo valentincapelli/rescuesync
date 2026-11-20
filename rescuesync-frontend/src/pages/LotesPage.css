@@ -23,7 +23,8 @@
 }
 
 .muted {
-  color: #666;
+  /* Sobre el fondo oscuro de la app, #666 daba 3,3:1; este valor supera el 4,5:1 que pide WCAG AA. */
+  color: #a3a3a3;
   font-size: 0.9rem;
 }
 

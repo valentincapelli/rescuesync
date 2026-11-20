@@ -63,7 +63,7 @@ export function ActividadDespliegue({ actividad: d, esOng, ocupado, onGuardar }:
 
       {d.pendienteSincronizacion && <p className="form-banner info" role="status">La solicitud está registrada y espera confirmación. Usá Actualizar para consultar su resultado.</p>}
       {esOng && !d.monitoreadoEn && !d.finalizadoEn && <p className="muted">Podrás finalizar la actividad cuando el Centro Coordinador complete el monitoreo.</p>}
-      {d.finalizadoEn && !d.liberadoEn && <p className="form-banner info">La actividad finalizó. La liberación de recursos todavía no fue confirmada.</p>}
+      {d.finalizadoEn && !d.liberadoEn && <p className="form-banner info" role="status">La actividad finalizó. La liberación de recursos todavía no fue confirmada.</p>}
 
       <details>
         <summary>Novedades ({d.novedades.length})</summary>

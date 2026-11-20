@@ -179,8 +179,8 @@ export function LotesPage() {
         </button>
       </div>
 
-      {error && <p className="form-banner error">{error}</p>}
-      {aviso && <p className="form-banner success">{aviso}</p>}
+      {error && <p className="form-banner error" role="alert">{error}</p>}
+      {aviso && <p className="form-banner success" role="status">{aviso}</p>}
 
       {seleccionada && (
         <>
@@ -271,7 +271,7 @@ export function LotesPage() {
               </div>
             </>
           ) : (
-            <p className="form-banner info">
+            <p className="form-banner info" role="status">
               La convocatoria de esta emergencia ya fue publicada ({ESTADO_EMERGENCIA_LABELS[seleccionada.estado]}): los
               lotes son de solo lectura.
             </p>

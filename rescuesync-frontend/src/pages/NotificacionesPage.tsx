@@ -137,7 +137,7 @@ export function NotificacionesPage({
           Cargando notificaciones…
         </p>
       ) : !error && notificaciones.length === 0 ? (
-        <p className="form-banner info">
+        <p className="form-banner info" role="status">
           Todavía no tenés notificaciones. Cuando se evalúen tus ofertas,
           recibirás novedades en esta sección.
         </p>

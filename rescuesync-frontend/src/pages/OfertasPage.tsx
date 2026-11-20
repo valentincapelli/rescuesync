@@ -129,7 +129,7 @@ export function OfertasPage() {
 
       {errorEmergencias && <p className="form-banner error" role="alert">{errorEmergencias}</p>}
       {!cargandoEmergencias && !errorEmergencias && emergencias.length === 0 && (
-        <p className="form-banner info">No hay convocatorias publicadas. Podrás ofertar cuando el Centro Coordinador publique los lotes.</p>
+        <p className="form-banner info" role="status">No hay convocatorias publicadas. Podrás ofertar cuando el Centro Coordinador publique los lotes.</p>
       )}
 
       {!cargandoEmergencias && emergencia && (
@@ -147,7 +147,7 @@ export function OfertasPage() {
           {cargandoLotes ? (
             <p className="muted" role="status">Cargando lotes…</p>
           ) : !errorLotes && lotes.length === 0 ? (
-            <p className="form-banner info">Esta convocatoria no tiene lotes publicados que admitan ofertas.</p>
+            <p className="form-banner info" role="status">Esta convocatoria no tiene lotes publicados que admitan ofertas.</p>
           ) : !errorLotes && (
             <div className="form-field">
               <label htmlFor="loteOferta">Lote publicado</label>

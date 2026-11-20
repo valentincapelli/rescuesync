@@ -69,7 +69,7 @@ export function CoberturaPanel({ emergenciaId, onActualizada }: Props) {
         <>
           {cobertura.fechaCierreConvocatoria && <p className="muted">Cierre de convocatoria:{' '}
             {new Intl.DateTimeFormat('es-AR', { dateStyle: 'medium', timeStyle: 'short' })
-              .format(new Date(cobertura.fechaCierreConvocatoria))}.</p>}
+              .format(new Date(cobertura.fechaCierreConvocatoria))}</p>}
           <div className="table-wrap">
             <table className="lotes-table">
               <caption>Cantidades recibidas por lote</caption>
@@ -128,8 +128,8 @@ export function CoberturaPanel({ emergenciaId, onActualizada }: Props) {
               </p>
             </>
           ) : cobertura.emergencia.estado === 'CONVOCATORIA_PUBLICADA' && !cobertura.plazoVencido ? (
-            <p className="form-banner info">La evaluación estará disponible al vencer la convocatoria. Actualizá la cobertura cuando finalice el plazo.</p>
-          ) : <p className="form-banner info">La evaluación de cobertura ya fue registrada.</p>}
+            <p className="form-banner info" role="status">La evaluación estará disponible al vencer la convocatoria. Actualizá la cobertura cuando finalice el plazo.</p>
+          ) : <p className="form-banner info" role="status">La evaluación de cobertura ya fue registrada.</p>}
           {cobertura.resolucion && !cobertura.resolucionPendiente && <p><strong>Resolución:</strong> {cobertura.resolucion}</p>}
         </>
       )}

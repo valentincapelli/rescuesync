@@ -23,11 +23,39 @@ export function ConfirmDialog({
   onCancelar,
 }: Props) {
   const confirmarRef = useRef<HTMLButtonElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const anteriorRef = useRef<HTMLElement | null>(null);
+
+  // Al abrir se recuerda quién tenía el foco; al cerrar se le devuelve (si no, el foco se pierde en <body>).
+  useEffect(() => {
+    anteriorRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    confirmarRef.current?.focus();
+    return () => {
+      const anterior = anteriorRef.current;
+      if (anterior && anterior.isConnected) anterior.focus();
+    };
+  }, []);
 
   useEffect(() => {
-    confirmarRef.current?.focus();
     function onKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape') onCancelar();
+      if (e.key === 'Escape') {
+        onCancelar();
+        return;
+      }
+      if (e.key !== 'Tab') return;
+      // Trampa de foco: Tab y Shift+Tab circulan solo entre los botones del modal.
+      const botones = dialogRef.current?.querySelectorAll<HTMLElement>('button:not([disabled])');
+      if (!botones || botones.length === 0) return;
+      const primero = botones[0];
+      const ultimo = botones[botones.length - 1];
+      const activo = document.activeElement;
+      if (e.shiftKey && (activo === primero || !dialogRef.current?.contains(activo))) {
+        e.preventDefault();
+        ultimo.focus();
+      } else if (!e.shiftKey && (activo === ultimo || !dialogRef.current?.contains(activo))) {
+        e.preventDefault();
+        primero.focus();
+      }
     }
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
@@ -36,6 +64,7 @@ export function ConfirmDialog({
   return (
     <div className="confirm-overlay" onClick={onCancelar}>
       <div
+        ref={dialogRef}
         className="confirm-dialog"
         role="alertdialog"
         aria-modal="true"

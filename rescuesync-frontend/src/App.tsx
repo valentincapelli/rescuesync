@@ -173,15 +173,23 @@ function App() {
             {s.id === 'notificaciones' &&
               notificacionesNoLeidas > 0 && (
                 <span className="notification-badge">
-                  {notificacionesNoLeidas > 99
-                    ? '99+'
-                    : notificacionesNoLeidas}
+                  <span aria-hidden="true">
+                    {notificacionesNoLeidas > 99
+                      ? '99+'
+                      : notificacionesNoLeidas}
+                  </span>
+                  <span className="visually-hidden">
+                    {notificacionesNoLeidas === 1
+                      ? ' notificación sin leer'
+                      : ` notificaciones sin leer`}
+                  </span>
                 </span>
               )}
           </button>
         ))}
       </nav>
 
+      <main>
       {seccionActual === 'municipio' && (
         <AltaEmergenciaPage />
       )}
@@ -213,6 +221,7 @@ function App() {
           <IndicadoresPage />
         </Suspense>
       )}
+      </main>
     </>
   );
 }

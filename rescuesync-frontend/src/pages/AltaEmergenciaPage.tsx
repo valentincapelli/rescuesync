@@ -128,14 +128,14 @@ export function AltaEmergenciaPage() {
       </p>
 
       {creada && (
-        <p className="form-banner success">
+        <p className="form-banner success" role="status">
           Emergencia #{creada.id} registrada con estado{' '}
           {creada.estado}.
         </p>
       )}
 
       {generalError && (
-        <p className="form-banner error">
+        <p className="form-banner error" role="alert">
           {generalError}
         </p>
       )}

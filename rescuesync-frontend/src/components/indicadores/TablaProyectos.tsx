@@ -93,6 +93,7 @@ export function TablaProyectos({ proyectos, filtroEstado, onQuitarFiltro }: Prop
                   return (
                     <th
                       key={c.id}
+                      scope="col"
                       className={c.num ? 'num' : undefined}
                       aria-sort={activa ? (orden.dir === 'asc' ? 'ascending' : 'descending') : 'none'}
                     >

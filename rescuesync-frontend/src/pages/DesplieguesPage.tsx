@@ -121,7 +121,7 @@ export function DesplieguesPage({ esOng = false }: { esOng?: boolean }) {
       </article>)}
     </div>}
     {!cargando && !error && actividades.length === 0 && (esOng || emergenciaId !== null) &&
-      <p className="form-banner info">No hay despliegues con compromiso confirmado. Usá Actualizar para consultar los últimos avances del proceso.</p>}
+      <p className="form-banner info" role="status">No hay despliegues con compromiso confirmado. Usá Actualizar para consultar los últimos avances del proceso.</p>}
     <div className="despliegue-lista" aria-busy={ocupado}>
       {actividades.map((d) => <ActividadDespliegue key={d.ofertaId} actividad={d} esOng={esOng}
         ocupado={ocupado} onGuardar={guardar} />)}
