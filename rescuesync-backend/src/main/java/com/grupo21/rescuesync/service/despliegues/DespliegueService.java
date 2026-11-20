@@ -89,10 +89,27 @@ public class DespliegueService {
         }
     }
 
+    /**
+     * Si Bonita tiene una tarea en incidente, la selección en curso se muestra como incidente con el
+     * motivo, en lugar de quedar como "pendiente" para siempre. La consulta es de mejor esfuerzo: si
+     * falla, no impide sincronizar el resto del seguimiento.
+     */
+    private void detectarTareaFallida(Long emergenciaId, Long caseId) {
+        try {
+            bonita.tareaFallida(caseId).ifPresent(tarea -> selecciones.incidenteEnCiclo(emergenciaId, caseId,
+                    "La tarea \"" + tarea + "\" falló en Bonita y el caso quedó detenido. "
+                            + "Revisá el motivo (por ejemplo, stock insuficiente en el Sistema Nacional) "
+                            + "y pedí a un administrador que lo resuelva."));
+        } catch (RuntimeException ex) {
+            log.warn("No se pudo consultar tareas fallidas del caso {}: {}", caseId, ex.getMessage());
+        }
+    }
+
     public void sincronizarCaso(Long emergenciaId) {
         var caso = registro.caso(emergenciaId);
         EstadoDespliegueBonita estado = bonita.consultar(emergenciaId, caso.caseId());
         registro.aplicar(emergenciaId, estado);
+        if (!estado.casoTerminado()) detectarTareaFallida(emergenciaId, caso.caseId());
         for (var accion : registro.pendientes(emergenciaId)) {
             // Solo se reintenta el mismo ID, nunca una tarea del siguiente ciclo.
             if (Objects.equals(accion.taskId(), estado.tareaMonitoreoId())

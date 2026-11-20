@@ -78,6 +78,15 @@ public class DespliegueBonitaClient {
                 Set.copyOf(liberadas), archivado, monitoreo, finalizacion, completadas);
     }
 
+    /** Tarea del caso en incidente (failed), solo para casos todavía activos. */
+    public java.util.Optional<String> tareaFallida(Long caseId) {
+        try {
+            return bonita.buscarTareaFallida(caseId.toString());
+        } catch (RestClientException ex) {
+            throw new BonitaIntegrationException("No se pudo consultar incidentes del caso en Bonita", ex);
+        }
+    }
+
     public void completar(String taskId) {
         bonita.completarTareaPorId(taskId);
     }

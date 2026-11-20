@@ -175,6 +175,31 @@ public class BonitaClient {
         });
     }
 
+    /**
+     * Nombre de una tarea del caso en estado failed (incidente), si existe. Una tarea automática que
+     * falla (por ejemplo, un compromiso rechazado por el Sistema Nacional) deja el caso trabado.
+     */
+    public Optional<String> buscarTareaFallida(String caseId) {
+        return withSession(sesion -> {
+            List<BonitaHumanTask> nodos = bonitaRestClient.get()
+                .uri(uriBuilder -> uriBuilder
+                    .path("/API/bpm/flowNode")
+                    .queryParam("f", "caseId=" + caseId)
+                    .queryParam("f", "state=failed")
+                    .queryParam("p", "0")
+                    .queryParam("c", "10")
+                    .build())
+                .headers(headers -> agregarHeadersDeSesion(headers, sesion))
+                .retrieve()
+                .body(new ParameterizedTypeReference<List<BonitaHumanTask>>() {});
+
+            if (nodos == null) {
+                return Optional.<String>empty();
+            }
+            return nodos.stream().findFirst().map(BonitaHumanTask::name);
+        });
+    }
+
     /** Devuelve todas las tareas ready del nombre dado; el coordinador exige exactamente una. */
     public List<String> buscarTareasActivas(String caseId, String nombreTarea) {
         return consultar("buscar tareas de selección", () -> {

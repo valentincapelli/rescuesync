@@ -132,6 +132,19 @@ public class SeleccionBonitaRegistro {
         }
     }
 
+    /** Marca como incidente la selección que está en curso cuando Bonita reporta una tarea fallida. */
+    @Transactional
+    public void incidenteEnCiclo(Long emergenciaId, Long caseId, String motivo) {
+        bloquearCaso(emergenciaId, caseId);
+        cola(emergenciaId).stream()
+                .filter(i -> i.getEstado() == EstadoIntencionSeleccionBonita.EN_CICLO)
+                .findFirst()
+                .ifPresent(i -> {
+                    i.setEstado(EstadoIntencionSeleccionBonita.INCIDENTE);
+                    i.setDetalleIncidente(motivo);
+                });
+    }
+
     @Transactional
     public void incidentePendiente(Long emergenciaId, Long caseId, String motivo) {
         bloquearCaso(emergenciaId, caseId);

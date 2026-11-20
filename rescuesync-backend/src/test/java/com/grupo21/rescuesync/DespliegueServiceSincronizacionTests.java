@@ -1,6 +1,7 @@
 package com.grupo21.rescuesync;
 
 import com.grupo21.rescuesync.client.DespliegueBonitaClient;
+import com.grupo21.rescuesync.client.EstadoDespliegueBonita;
 import com.grupo21.rescuesync.dto.despliegues.DespliegueResponse;
 import com.grupo21.rescuesync.exception.BonitaIntegrationException;
 import com.grupo21.rescuesync.service.SeleccionBonitaCoordinador;
@@ -11,6 +12,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -21,13 +24,20 @@ class DespliegueServiceSincronizacionTests {
     private static final String EMAIL = "ong@test.com";
 
     private DespliegueRegistroService registro;
+    private DespliegueBonitaClient bonita;
+    private SeleccionBonitaRegistro selecciones;
     private DespliegueService servicio;
+    /** Servicio sin spy, para ejercitar sincronizarCaso de verdad. */
+    private DespliegueService real;
 
     @BeforeEach
     void preparar() {
         registro = mock(DespliegueRegistroService.class);
-        servicio = spy(new DespliegueService(registro, mock(DespliegueBonitaClient.class),
-                mock(SeleccionBonitaCoordinador.class), mock(SeleccionBonitaRegistro.class)));
+        bonita = mock(DespliegueBonitaClient.class);
+        selecciones = mock(SeleccionBonitaRegistro.class);
+        var coordinador = mock(SeleccionBonitaCoordinador.class);
+        servicio = spy(new DespliegueService(registro, bonita, coordinador, selecciones));
+        real = new DespliegueService(registro, bonita, coordinador, selecciones);
         when(registro.propias(EMAIL)).thenReturn(List.<DespliegueResponse>of());
     }
 
@@ -55,6 +65,53 @@ class DespliegueServiceSincronizacionTests {
         assertThatThrownBy(() -> servicio.propias(EMAIL, true)).isSameAs(primero);
 
         verify(servicio).sincronizarCaso(10L);
+    }
+
+    @Test
+    void tareaFallidaEnBonitaMarcaLaSeleccionEnCursoComoIncidente() {
+        prepararCaso(false);
+        when(bonita.tareaFallida(7L)).thenReturn(Optional.of("Comprometer recursos"));
+
+        real.sincronizarCaso(15L);
+
+        verify(selecciones).incidenteEnCiclo(eq(15L), eq(7L), contains("Comprometer recursos"));
+    }
+
+    @Test
+    void sinTareaFallidaNoSeMarcaIncidente() {
+        prepararCaso(false);
+        when(bonita.tareaFallida(7L)).thenReturn(Optional.empty());
+
+        real.sincronizarCaso(15L);
+
+        verify(selecciones, never()).incidenteEnCiclo(any(), any(), any());
+    }
+
+    @Test
+    void casoTerminadoNoConsultaIncidentes() {
+        prepararCaso(true);
+
+        real.sincronizarCaso(15L);
+
+        verify(bonita, never()).tareaFallida(any());
+    }
+
+    @Test
+    void siFallaLaConsultaDeIncidentesElSeguimientoContinua() {
+        prepararCaso(false);
+        when(bonita.tareaFallida(7L)).thenThrow(new BonitaIntegrationException("sin respuesta", null));
+
+        real.sincronizarCaso(15L);
+
+        verify(registro).aplicar(eq(15L), any());
+        verify(selecciones, never()).incidenteEnCiclo(any(), any(), any());
+    }
+
+    private void prepararCaso(boolean terminado) {
+        var estado = new EstadoDespliegueBonita(7L, null, null, null, Set.of(), terminado, null, null, Set.of());
+        when(registro.caso(15L)).thenReturn(new DespliegueRegistroService.Caso(15L, 7L));
+        when(bonita.consultar(15L, 7L)).thenReturn(estado);
+        when(registro.pendientes(15L)).thenReturn(List.of());
     }
 
     @Test
