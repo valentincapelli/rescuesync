@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { ConfirmDialog } from '../ConfirmDialog';
 import type { Despliegue, TipoNovedad } from '../../types/despliegue';
 import { TIPO_RECURSO_LABELS } from '../../types/lote';
 import { ESTADO_EMERGENCIA_LABELS } from '../../types/emergencia';
@@ -28,14 +29,19 @@ interface Props {
 
 export function ActividadDespliegue({ actividad: d, esOng, ocupado, onGuardar }: Props) {
   const [observacion, setObservacion] = useState('');
+  const [confirmar, setConfirmar] = useState<TipoNovedad | null>(null);
   const permiteNovedad = !esOng && !d.finalizadoEn && !d.liberadoEn;
   const permiteFormulario = permiteNovedad || d.puedeFinalizar;
 
-  async function guardar(tipo: TipoNovedad) {
+  // Novedad se guarda directo; monitoreo y finalización piden confirmación en un modal.
+  function guardar(tipo: TipoNovedad) {
     if (!observacion.trim() || ocupado) return;
-    if (tipo !== 'NOVEDAD' && !window.confirm(tipo === 'FINALIZACION'
-      ? '¿Confirmás que la actividad de asistencia concluyó? Esto solicitará la liberación de sus recursos.'
-      : '¿Completar el monitoreo y habilitar la finalización de esta actividad por la ONG?')) return;
+    if (tipo === 'NOVEDAD') void ejecutar(tipo);
+    else setConfirmar(tipo);
+  }
+
+  async function ejecutar(tipo: TipoNovedad) {
+    setConfirmar(null);
     if (await onGuardar(d.ofertaId, tipo, observacion.trim())) setObservacion('');
   }
 
@@ -74,7 +80,7 @@ export function ActividadDespliegue({ actividad: d, esOng, ocupado, onGuardar }:
 
       {permiteFormulario && <form className="emergencia-form" onSubmit={(e) => {
         e.preventDefault();
-        void guardar(esOng ? 'FINALIZACION' : 'NOVEDAD');
+        guardar(esOng ? 'FINALIZACION' : 'NOVEDAD');
       }}>
         <div className="form-field">
           <label htmlFor={`observacion-${d.ofertaId}`}>{esOng ? 'Observación de cierre' : 'Novedad del despliegue'}</label>
@@ -86,12 +92,21 @@ export function ActividadDespliegue({ actividad: d, esOng, ocupado, onGuardar }:
             {esOng ? 'Finalizar actividad' : 'Registrar novedad'}
           </button>
           {!esOng && d.puedeMonitorear && <button type="button" className="secondary"
-            disabled={ocupado || !observacion.trim()} onClick={() => void guardar('MONITOREO_COMPLETADO')}>
+            disabled={ocupado || !observacion.trim()} onClick={() => guardar('MONITOREO_COMPLETADO')}>
             Completar monitoreo
           </button>}
         </div>
       </form>}
       {d.sincronizadoEn && <p className="muted">Última actualización: {fecha(d.sincronizadoEn)}</p>}
+      {confirmar && <ConfirmDialog
+        titulo={confirmar === 'FINALIZACION' ? 'Finalizar actividad' : 'Completar monitoreo'}
+        mensaje={confirmar === 'FINALIZACION'
+          ? '¿Confirmás que la actividad de asistencia concluyó? Esto solicitará la liberación de sus recursos.'
+          : '¿Completar el monitoreo y habilitar la finalización de esta actividad por la ONG?'}
+        confirmarLabel={confirmar === 'FINALIZACION' ? 'Finalizar' : 'Completar monitoreo'}
+        onCancelar={() => setConfirmar(null)}
+        onConfirmar={() => void ejecutar(confirmar)}
+      />}
     </article>
   );
 }

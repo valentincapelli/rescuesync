@@ -6,6 +6,7 @@ import { listarEmergencias, publicarConvocatoria } from '../api/emergencias';
 import { crearLote, editarLote, eliminarLote, listarLotes } from '../api/lotes';
 import { LoteForm } from '../components/LoteForm';
 import { CoberturaPanel } from '../components/CoberturaPanel';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 import {
   ESTADO_EMERGENCIA_LABELS,
   ESTADOS_DESGLOSE_ABIERTO,
@@ -33,6 +34,8 @@ export function LotesPage() {
   const [cargandoLotes, setCargandoLotes] = useState(false);
   const [editando, setEditando] = useState<Lote | null>(null);
   const [publicando, setPublicando] = useState(false);
+  // Acción pendiente de confirmación en el modal (en lugar de window.confirm).
+  const [confirmacion, setConfirmacion] = useState<{ tipo: 'publicar' } | { tipo: 'borrar'; lote: Lote } | null>(null);
 
   const [error, setError] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
@@ -108,7 +111,6 @@ export function LotesPage() {
 
   async function borrarLote(lote: Lote) {
     if (!seleccionada) return;
-    if (!window.confirm(`¿Borrar el lote #${lote.id} (${lote.cantidadRequerida} ${lote.unidadMedida})?`)) return;
     setAviso(null);
     setError(null);
     try {
@@ -123,12 +125,6 @@ export function LotesPage() {
 
   async function publicar() {
     if (!seleccionada) return;
-    const confirmado = window.confirm(
-      `Vas a publicar la convocatoria de la emergencia #${seleccionada.id} con ${lotes.length} lote(s).\n` +
-        'Después ya no se van a poder agregar, editar ni borrar lotes. ¿Continuar?',
-    );
-    if (!confirmado) return;
-
     setPublicando(true);
     setAviso(null);
     setError(null);
@@ -239,7 +235,7 @@ export function LotesPage() {
                           <button type="button" className="link" onClick={() => setEditando(lote)}>
                             Editar
                           </button>
-                          <button type="button" className="link danger" onClick={() => void borrarLote(lote)}>
+                          <button type="button" className="link danger" onClick={() => setConfirmacion({ tipo: 'borrar', lote })}>
                             Borrar
                           </button>
                         </td>
@@ -265,7 +261,7 @@ export function LotesPage() {
                 <div className="form-actions">
                   <button
                     type="button"
-                    onClick={() => void publicar()}
+                    onClick={() => setConfirmacion({ tipo: 'publicar' })}
                     disabled={publicando || lotes.length === 0 || editando !== null}
                     title={lotes.length === 0 ? 'Cargá al menos un lote' : undefined}
                   >
@@ -284,6 +280,35 @@ export function LotesPage() {
       )}
       {seleccionada && !desgloseAbierto && <CoberturaPanel key={seleccionada.id}
         emergenciaId={seleccionada.id} onActualizada={(e) => actualizarEstado(e.id, e.estado)} />}
+
+      {confirmacion?.tipo === 'publicar' && seleccionada && (
+        <ConfirmDialog
+          titulo="Publicar convocatoria"
+          mensaje={
+            `Vas a publicar la convocatoria de la emergencia #${seleccionada.id} con ${lotes.length} lote(s).\n` +
+            'Después ya no se van a poder agregar, editar ni borrar lotes. ¿Continuar?'
+          }
+          confirmarLabel="Publicar"
+          onCancelar={() => setConfirmacion(null)}
+          onConfirmar={() => {
+            setConfirmacion(null);
+            void publicar();
+          }}
+        />
+      )}
+      {confirmacion?.tipo === 'borrar' && (
+        <ConfirmDialog
+          titulo="Borrar lote"
+          mensaje={`¿Borrar el lote #${confirmacion.lote.id} (${confirmacion.lote.cantidadRequerida} ${confirmacion.lote.unidadMedida})?`}
+          confirmarLabel="Borrar"
+          onCancelar={() => setConfirmacion(null)}
+          onConfirmar={() => {
+            const lote = confirmacion.lote;
+            setConfirmacion(null);
+            void borrarLote(lote);
+          }}
+        />
+      )}
     </section>
   );
 }
