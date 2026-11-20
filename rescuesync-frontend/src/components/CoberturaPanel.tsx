@@ -107,17 +107,26 @@ export function CoberturaPanel({ emergenciaId, onActualizada }: Props) {
                 Continuar con cobertura parcial</button></div>
             </form>
           ) : puedeEvaluar ? (
-            <div className="form-actions">
-              <button type="button" disabled={guardando || !completa}
-                onClick={() => void ejecutar(() => decidirCobertura(emergenciaId, 'COMPLETA'), 'Cobertura completa confirmada.')}>
-                Confirmar cobertura completa</button>
-              <button type="button" className="secondary" disabled={guardando || completa || !hayOfertas}
-                onClick={() => void ejecutar(() => decidirCobertura(emergenciaId, 'PARCIAL'), 'Cobertura parcial registrada. Indicá la resolución.')}>
-                Resolver cobertura parcial</button>
-              <button type="button" className="secondary" disabled={guardando || completa || cobertura.lotes.length === 0}
-                onClick={() => void ejecutar(() => decidirCobertura(emergenciaId, 'SIN_COBERTURA'), 'Nueva convocatoria pendiente de publicación.')}>
-                Solicitar nueva convocatoria</button>
-            </div>
+            <>
+              <div className="form-actions">
+                <button type="button" disabled={guardando || !completa}
+                  onClick={() => void ejecutar(() => decidirCobertura(emergenciaId, 'COMPLETA'), 'Cobertura completa confirmada.')}>
+                  Confirmar cobertura completa</button>
+                <button type="button" className="secondary" disabled={guardando || completa || !hayOfertas}
+                  title="Seguir adelante con las ofertas recibidas, aunque algún lote quede sin cubrir."
+                  onClick={() => void ejecutar(() => decidirCobertura(emergenciaId, 'PARCIAL'), 'Cobertura parcial registrada. Indicá la resolución.')}>
+                  Resolver cobertura parcial</button>
+                <button type="button" className="secondary" disabled={guardando || completa || cobertura.lotes.length === 0}
+                  title="Reabrir la convocatoria con un nuevo plazo para recibir más ofertas. Las ofertas ya recibidas se conservan."
+                  onClick={() => void ejecutar(() => decidirCobertura(emergenciaId, 'SIN_COBERTURA'), 'Nueva convocatoria pendiente de publicación.')}>
+                  Solicitar nueva convocatoria</button>
+              </div>
+              <p className="muted">
+                <strong>Resolver cobertura parcial</strong> sigue con las ofertas recibidas (requiere al menos una).{' '}
+                <strong>Solicitar nueva convocatoria</strong> reabre el plazo para conseguir más ofertas; las ya recibidas
+                se conservan y está disponible con o sin ofertas mientras la cobertura no sea completa.
+              </p>
+            </>
           ) : cobertura.emergencia.estado === 'CONVOCATORIA_PUBLICADA' && !cobertura.plazoVencido ? (
             <p className="form-banner info">La evaluación estará disponible al vencer la convocatoria. Actualizá la cobertura cuando finalice el plazo.</p>
           ) : <p className="form-banner info">La evaluación de cobertura ya fue registrada.</p>}

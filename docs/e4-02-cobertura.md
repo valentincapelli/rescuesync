@@ -37,7 +37,17 @@ El servicio compara lo ofrecido contra lo requerido por lote y exige que la deci
 | --- | --- | --- |
 | `COMPLETA` | Todos los lotes cubiertos | Lotes `CUBIERTO`; emergencia `COBERTURA_EVALUADA` |
 | `PARCIAL` | Al menos un lote sin cubrir | Lotes `CUBIERTO` o `PARCIALMENTE_CUBIERTO`; emergencia `COBERTURA_PARCIAL` |
-| `SIN_COBERTURA` | — | Sin cambios de estado; nuevo plazo de convocatoria |
+| `SIN_COBERTURA` | Cobertura no completa (con o sin ofertas) | Sin cambios de estado; nuevo plazo de convocatoria |
+
+#### Qué significa `SIN_COBERTURA`
+
+El nombre es histórico: en la práctica es **"reabrir la convocatoria"**. La UI lo muestra como *Solicitar nueva convocatoria*.
+
+- Se acepta siempre que la cobertura **no sea completa**, haya ofertas o no. Solo se rechaza (`409`) si todos los lotes ya están cubiertos.
+- **No exige** que no haya ofertas ni que ningún lote esté cubierto. Con 500 de 1200 requeridos se aceptan tanto `PARCIAL` como `SIN_COBERTURA`.
+- Las ofertas ya recibidas **se conservan** al reabrir y cuentan en la siguiente evaluación (verificado el 20/11/2026: emergencia con una oferta de 500, reabierta, evaluada como `PARCIAL` y cerrada con compromiso y liberación en el Sistema Nacional).
+- Diferencia con `PARCIAL`: `PARCIAL` **continúa** con lo recibido (exige al menos una oferta) y pasa a *Resolver cobertura incompleta*; `SIN_COBERTURA` **vuelve** a *Publicar convocatoria* para conseguir más ofertas.
+- Para publicar de nuevo, el Centro Coordinador usa `POST /api/emergencias/{id}/convocatoria` o el botón *Publicar nuevamente*.
 
 Luego completa la tarea en Bonita enviando `decisionCoberturaInput`.
 
@@ -60,6 +70,8 @@ Bonita Studio 2025.2 / Runtime 10.4, backend con `PLAZO_CONVOCATORIA_MS=20000` p
 | Cobertura completa | 10 | `COMPLETA` | `COBERTURA_EVALUADA` | ¿Lotes cubiertos? → Evaluar ofertas → ¿Quedan ofertas? → Seleccionar oferta |
 | Cobertura parcial | 4 | `PARCIAL` | `COBERTURA_PARCIAL` | ¿Lotes cubiertos? → Resolver cobertura incompleta |
 | Sin cobertura | 0 | `SIN_COBERTURA` | `CONVOCATORIA_PUBLICADA` | ¿Lotes cubiertos? → Publicar convocatoria |
+
+El caso de 0 ofertas es solo uno de los escenarios válidos: `SIN_COBERTURA` también se acepta con ofertas insuficientes (ver arriba).
 
 En los tres casos `decisionCobertura` quedó con el valor enviado. También se comprobó: repetir la decisión sobre una emergencia ya evaluada devuelve `409`, y un valor fuera del enum devuelve `400`.
 
