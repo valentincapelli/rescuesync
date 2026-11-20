@@ -1,5 +1,7 @@
 # E4-02 — Evaluación de cobertura y caminos alternativos en Bonita
 
+> Antecedente del 19/11/2026. E4-09 completa la pantalla, la resolución parcial, la republicación y la recuperación de respuestas inciertas: ver [comportamiento actual](e4-09-correcciones.md). El gateway “¿Quedan ofertas?” también fue corregido en la integración posterior. Las secciones de backend y pendientes de esta guía reflejan la versión original.
+
 Resuelve el ajuste 20 de [`e4-01-ajustes-pendientes.md`](e4-01-ajustes-pendientes.md) (problema 1 de [`e3-10-prueba-integracion.md`](e3-10-prueba-integracion.md)): la tarea **"Evaluar cobertura de lotes"** no tenía contrato y las tres salidas del gateway **"¿Lotes cubiertos?"** compartían la misma condición, por lo que Bonita siempre tomaba "Resolver cobertura incompleta".
 
 > Alcance: proceso y backend. **No incluye pantalla** para el Centro Coordinador (queda en el ajuste 20 de E4-01).

@@ -23,6 +23,8 @@ El [contrato de indicadores](docs/e4-indicadores-contrato.md) define los endpoin
 
 ## Estado de E4
 
+- [Verificación de perfiles, permisos y funcionalidades](docs/e4-09-verificacion-perfiles.md): auditoría del estado integrado al 20/11/2026.
+- [Correcciones de la verificación](docs/e4-09-correcciones.md): solución de H1–H8, migración y validación pendiente con Bonita real.
 - [Monitoreo del despliegue y finalización](docs/monitoreo-finalizacion.md): pantallas, permisos, sincronización con Bonita y requisitos para probar con E3-10.
 
 - [Validación de ofertas y perfiles de competencia](docs/e4-validacion-ofertas.md): clasificación principal/apoyo con el perfil del Sistema Nacional y ofertas validadas en la pantalla de selección.

@@ -69,10 +69,10 @@ Detalles:
 
 ## Limitaciones conocidas
 
-- **Cobertura parcial:** con `PARCIAL` el caso queda en "Resolver cobertura incompleta", que no tiene endpoint (ajuste 7). No llega a "Evaluar ofertas", así que esas ofertas siguen `PENDIENTE`.
+- **Cobertura parcial:** E4-09 incorpora la resolución desde la aplicación y completa "Resolver cobertura incompleta"; ver [correcciones](e4-09-correcciones.md).
 - **CUIT:** una ONG sin CUIT hace fallar el conector de evaluación y deja el caso en incidente. RescueSync no tiene alta de ONGs, solo seeds: hay que cargarlo con `scripts/ongs_cuit.sql` o en el seed.
-- **Selección múltiple frente a un ciclo por oferta en Bonita:** sigue igual que antes ([`plan-monitoreo-finalizacion.md`](plan-monitoreo-finalizacion.md), sección 5).
-- Las ofertas marcadas `EVALUADA` en `seed-indicadores-demo.sql` no tienen perfil. Se muestran como seleccionables, con "Sin datos de validación".
+- **Selección múltiple:** E4-05 mantiene una intención persistida por oferta y avanza al siguiente ciclo después de confirmar la liberación nacional.
+- **Datos sin validación:** desde E4-09, una oferta `EVALUADA` sin clasificación nacional no es seleccionable. `seed-indicadores-demo.sql` no contiene ofertas `EVALUADA`; no se agregaron clasificaciones ficticias al seed.
 
 ## Cómo probarlo a mano
 
