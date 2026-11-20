@@ -28,7 +28,8 @@ import static org.mockito.Mockito.*;
 class SeleccionBonitaCoordinadorTests {
     private final SeleccionBonitaRegistro registro = mock(SeleccionBonitaRegistro.class);
     private final BonitaClient bonita = mock(BonitaClient.class);
-    private final SeleccionBonitaCoordinador coordinador = new SeleccionBonitaCoordinador(registro, bonita);
+    private final SeleccionBonitaCoordinador coordinador = new SeleccionBonitaCoordinador(registro, bonita,
+            mock(com.grupo21.rescuesync.service.NotificacionBonitaCoordinador.class));
     private final SeleccionBonitaRegistro.Envio envio =
             new SeleccionBonitaRegistro.Envio(10, 7, "task-10", true, Instant.now());
 

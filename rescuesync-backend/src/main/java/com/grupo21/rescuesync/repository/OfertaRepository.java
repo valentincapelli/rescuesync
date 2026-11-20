@@ -6,6 +6,7 @@ import com.grupo21.rescuesync.model.Oferta;
 import jakarta.persistence.LockModeType;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -19,6 +20,9 @@ public interface OfertaRepository extends JpaRepository<Oferta, Long> {
     List<Oferta> findByLoteIdAndEstado(Long loteId, EstadoOferta estado);
 
     List<Oferta> findByOngId(Long OngId);
+
+    @EntityGraph(attributePaths = {"ong", "lote", "lote.emergencia"})
+    List<Oferta> findByOngIdOrderByIdDesc(Long ongId);
 
     List<Oferta> findByOngIdAndLoteId(Long OngId, Long loteId);
 

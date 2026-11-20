@@ -8,6 +8,8 @@ import com.grupo21.rescuesync.model.Emergencia;
 import com.grupo21.rescuesync.model.EstadoEmergencia;
 import com.grupo21.rescuesync.model.EstadoLote;
 import com.grupo21.rescuesync.model.Lote;
+import com.grupo21.rescuesync.model.Rol;
+import com.grupo21.rescuesync.repository.UsuarioRepository;
 import com.grupo21.rescuesync.repository.EmergenciaRepository;
 import com.grupo21.rescuesync.repository.LoteRepository;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +30,7 @@ public class LoteService {
     private final LoteRepository loteRepository;
     private final EmergenciaRepository emergenciaRepository;
     private final HistorialEstadoService historialEstadoService;
+    private final UsuarioRepository usuarioRepository;
 
     @Transactional
     public LoteResponse crear(Long emergenciaId, CrearLoteRequest request) {
@@ -50,8 +53,13 @@ public class LoteService {
     }
 
     @Transactional(readOnly = true)
-    public List<LoteResponse> listarPorEmergencia(Long emergenciaId) {
-        if (!emergenciaRepository.existsById(emergenciaId)) {
+    public List<LoteResponse> listarPorEmergencia(Long emergenciaId, String email) {
+        Emergencia emergencia = buscarEmergencia(emergenciaId);
+        var usuario = usuarioRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado"));
+        if (usuario.getRol() == Rol.OPERADOR_MUNICIPAL
+                && (usuario.getMunicipio() == null
+                || !usuario.getMunicipio().getId().equals(emergencia.getMunicipio().getId()))) {
             throw new ResourceNotFoundException("Emergencia", emergenciaId);
         }
 

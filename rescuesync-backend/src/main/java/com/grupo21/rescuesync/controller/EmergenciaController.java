@@ -1,6 +1,10 @@
 package com.grupo21.rescuesync.controller;
 
 import com.grupo21.rescuesync.dto.CrearEmergenciaRequest;
+import com.grupo21.rescuesync.dto.CoberturaResponse;
+import com.grupo21.rescuesync.dto.ResolverCoberturaRequest;
+import com.grupo21.rescuesync.model.OperacionCobertura;
+import com.grupo21.rescuesync.service.CoberturaService;
 import com.grupo21.rescuesync.dto.DecidirCoberturaRequest;
 import com.grupo21.rescuesync.dto.EmergenciaResponse;
 import com.grupo21.rescuesync.dto.LoteOfertasConsolidadasResponse;
@@ -32,6 +36,7 @@ import java.util.List;
 public class EmergenciaController {
 
     private final EmergenciaService emergenciaService;
+    private final CoberturaService coberturaService;
 
     @Operation(summary = "Registrar una nueva emergencia")
     @PreAuthorize("hasAuthority('REGISTRAR_EMERGENCIA')")
@@ -62,23 +67,50 @@ public class EmergenciaController {
     @ApiResponse(responseCode = "200", description = "Convocatoria publicada")
     @ApiResponse(responseCode = "409", description = "Sin lotes o convocatoria ya publicada")
     @PostMapping("/{id}/convocatoria")
-    public EmergenciaResponse publicarConvocatoria(@PathVariable Long id) {
-        return emergenciaService.publicarConvocatoria(id);
+    public ResponseEntity<EmergenciaResponse> publicarConvocatoria(@PathVariable Long id) {
+        if (coberturaService.consultar(id).republicacionPendiente()) {
+            return respuestaCobertura(coberturaService.ejecutar(id, OperacionCobertura.REPUBLICAR, null, null));
+        }
+        return ResponseEntity.ok(emergenciaService.publicarConvocatoria(id));
     }
 
     @Operation(summary = "Registrar la decisión de cobertura de lotes",
             description = "COMPLETA exige todos los lotes cubiertos (emergencia a COBERTURA_EVALUADA); "
                     + "PARCIAL exige al menos uno sin cubrir (COBERTURA_PARCIAL); SIN_COBERTURA reabre la "
-                    + "convocatoria. Completa la tarea 'Evaluar cobertura de lotes' en Bonita.")
+                    + "convocatoria mediante una nueva publicación. Requiere que venza el plazo. "
+                    + "202 indica que la operación sigue pendiente de confirmación en Bonita.")
     @PreAuthorize("hasAuthority('EVALUAR_COBERTURA')")
     @ApiResponse(responseCode = "200", description = "Decisión registrada")
     @ApiResponse(responseCode = "409", description = "Estado inválido o decisión inconsistente con las ofertas")
     @PostMapping(value = "/{id}/cobertura", consumes = MediaType.APPLICATION_JSON_VALUE)
-    public EmergenciaResponse decidirCobertura(
+    public ResponseEntity<EmergenciaResponse> decidirCobertura(
             @PathVariable Long id,
             @Valid @RequestBody DecidirCoberturaRequest request
     ) {
-        return emergenciaService.decidirCobertura(id, request.decision());
+        return respuestaCobertura(coberturaService.ejecutar(id, OperacionCobertura.EVALUAR, request.decision(), null));
+    }
+
+    @PreAuthorize("hasAuthority('EVALUAR_COBERTURA')")
+    @GetMapping("/{id}/cobertura")
+    public CoberturaResponse consultarCobertura(@PathVariable Long id) {
+        return coberturaService.consultar(id);
+    }
+
+    @PreAuthorize("hasAuthority('EVALUAR_COBERTURA')")
+    @PostMapping("/{id}/cobertura/resolucion")
+    public ResponseEntity<EmergenciaResponse> resolverCobertura(@PathVariable Long id,
+            @Valid @RequestBody ResolverCoberturaRequest request) {
+        return respuestaCobertura(coberturaService.ejecutar(id, OperacionCobertura.RESOLVER, null, request.observacion()));
+    }
+
+    @PreAuthorize("hasAuthority('EVALUAR_COBERTURA')")
+    @PostMapping("/{id}/cobertura/sincronizar")
+    public CoberturaResponse sincronizarCobertura(@PathVariable Long id) {
+        return coberturaService.sincronizar(id);
+    }
+
+    private ResponseEntity<EmergenciaResponse> respuestaCobertura(CoberturaResponse resultado) {
+        return ResponseEntity.status(resultado.sincronizacionPendiente() ? 202 : 200).body(resultado.emergencia());
     }
 
     @Operation(summary = "Obtener una emergencia por id")

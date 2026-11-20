@@ -3,6 +3,7 @@ package com.grupo21.rescuesync.controller;
 import com.grupo21.rescuesync.dto.ofertas.CrearOfertaRequest;
 import com.grupo21.rescuesync.dto.ofertas.EditarOfertaRequest;
 import com.grupo21.rescuesync.dto.ofertas.OfertaResponse;
+import com.grupo21.rescuesync.dto.ofertas.OfertaPropiaResponse;
 import com.grupo21.rescuesync.dto.ofertas.OfertasEvaluadasEmergenciaResponse;
 import com.grupo21.rescuesync.dto.ofertas.SeleccionarOfertasRequest;
 import com.grupo21.rescuesync.dto.ofertas.SeleccionarOfertasResponse;
@@ -36,6 +37,12 @@ public class OfertaController {
     private final OfertaService ofertaService;
     private final ValidacionOfertasService validacionOfertasService;
 
+    @PreAuthorize("hasAuthority('EDITAR_OFERTA')")
+    @GetMapping("/ofertas/mias")
+    public List<OfertaPropiaResponse> listarPropias(@AuthenticationPrincipal UserDetails usuario) {
+        return ofertaService.listarPropias(usuario.getUsername());
+    }
+
     @PreAuthorize("hasAuthority('CREAR_OFERTA')")
     @PostMapping("/lotes/{loteId}/ofertas")
     public ResponseEntity<OfertaResponse> crear(
@@ -54,11 +61,12 @@ public class OfertaController {
     @PreAuthorize("hasAuthority('EDITAR_OFERTA')")
     @PutMapping("/lotes/{loteId}/ofertas/{ofertaId}")
     public ResponseEntity<OfertaResponse> editar(
+            @PathVariable Long loteId,
             @PathVariable Long ofertaId,
             @Valid @RequestBody EditarOfertaRequest request,
             @AuthenticationPrincipal UserDetails userDetails
     ) {
-        OfertaResponse response = ofertaService.editar(ofertaId, request, userDetails.getUsername());
+        OfertaResponse response = ofertaService.editar(loteId, ofertaId, request, userDetails.getUsername());
 
         return ResponseEntity.ok(response);
     }

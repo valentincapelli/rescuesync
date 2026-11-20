@@ -7,6 +7,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.event.TransactionalEventListener;
 import org.springframework.web.client.HttpClientErrorException;
 
@@ -24,8 +26,10 @@ public class SeleccionBonitaCoordinador {
     private static final Duration ESPERA_RECONCILIACION = Duration.ofSeconds(30);
     private final SeleccionBonitaRegistro registro;
     private final BonitaClient bonita;
+    private final NotificacionBonitaCoordinador notificaciones;
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public void adjudicacionRegistrada(OfertaService.AdjudicacionRegistrada evento) {
         try {
             despachar(evento.emergenciaId());
@@ -57,6 +61,7 @@ public class SeleccionBonitaCoordinador {
             }
             throw ex;
         }
+        notificaciones.sincronizar(emergenciaId);
     }
 
     private void despacharValidado(Long emergenciaId) {

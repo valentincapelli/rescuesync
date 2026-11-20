@@ -17,6 +17,7 @@ import lombok.Setter;
 import lombok.ToString;
 
 import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -56,6 +57,38 @@ public class Emergencia extends BaseEntity {
 
     @Column(name = "fecha_cierre_convocatoria")
     private LocalDateTime fechaCierreConvocatoria;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "decision_cobertura", length = 20)
+    private DecisionCobertura decisionCobertura;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "operacion_cobertura", length = 20)
+    private OperacionCobertura operacionCobertura;
+
+    @Column(name = "cobertura_task_id", length = 100)
+    private String coberturaTaskId;
+
+    @Column(name = "cobertura_sincronizacion_pendiente", nullable = false, columnDefinition = "boolean default false")
+    private boolean coberturaSincronizacionPendiente;
+
+    @Column(name = "cobertura_ultimo_intento")
+    private Instant coberturaUltimoIntento;
+
+    @Column(name = "cierre_convocatoria_previsto")
+    private LocalDateTime cierreConvocatoriaPrevisto;
+
+    @Column(name = "resolucion_cobertura", length = 2000)
+    private String resolucionCobertura;
+
+    public boolean isRepublicacionPendiente() {
+        return decisionCobertura == DecisionCobertura.SIN_COBERTURA;
+    }
+
+    public boolean isResolucionCoberturaPendiente() {
+        return estado == EstadoEmergencia.COBERTURA_PARCIAL
+                && (operacionCobertura != OperacionCobertura.RESOLVER || coberturaSincronizacionPendiente);
+    }
     
     /** Id de la instancia de proceso en Bonita una vez iniciada (E2-11/E2-12). Null hasta entonces. */
     @Column(name = "bonita_case_id")

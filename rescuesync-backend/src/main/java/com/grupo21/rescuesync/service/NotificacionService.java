@@ -6,6 +6,8 @@ import com.grupo21.rescuesync.exception.ResourceNotFoundException;
 import com.grupo21.rescuesync.model.Notificacion;
 import com.grupo21.rescuesync.model.NotificacionUsuario;
 import com.grupo21.rescuesync.model.Ong;
+import com.grupo21.rescuesync.model.Oferta;
+import org.springframework.context.ApplicationEventPublisher;
 import com.grupo21.rescuesync.model.Usuario;
 import com.grupo21.rescuesync.model.TipoNotificacion;
 import com.grupo21.rescuesync.repository.NotificacionRepository;
@@ -26,16 +28,19 @@ public class NotificacionService {
     private final NotificacionRepository notificacionRepository;
     private final NotificacionUsuarioRepository notificacionUsuarioRepository;
     private final UsuarioRepository usuarioRepository;
+    private final ApplicationEventPublisher eventos;
 
     @Transactional
     public void crearNotificacion(
-            Ong ong,
+            Oferta oferta,
             String titulo,
             String mensaje,
             TipoNotificacion tipo
     ) {
         Notificacion notificacion = new Notificacion();
+        Ong ong = oferta.getOng();
 
+        notificacion.setOferta(oferta);
         notificacion.setOng(ong);
         notificacion.setTitulo(titulo);
         notificacion.setMensaje(mensaje);
@@ -100,7 +105,13 @@ public class NotificacionService {
         if (destinatario.getFechaLectura() == null) {
             destinatario.setFechaLectura(Instant.now());
         }
+        var notificacion = destinatario.getNotificacion();
+        if (notificacion.getTipo() == TipoNotificacion.OFERTA_SELECCIONADA && notificacion.getOferta() != null) {
+            eventos.publishEvent(new RecepcionRegistrada(notificacion.getOferta().getLote().getEmergencia().getId()));
+        }
     }
+
+    public record RecepcionRegistrada(Long emergenciaId) {}
 
     private Usuario buscarUsuario(String email) {
 
@@ -123,7 +134,18 @@ public class NotificacionService {
                 notificacion.getMensaje(),
                 notificacion.getTipo(),
                 notificacion.getCreatedAt(),
-                destinatario.getFechaLectura() != null
+                destinatario.getFechaLectura() != null,
+                estadoRecepcion(destinatario)
         );
+    }
+
+    private NotificacionResponse.EstadoRecepcion estadoRecepcion(NotificacionUsuario destinatario) {
+        var n = destinatario.getNotificacion();
+        if (n.getTipo() != TipoNotificacion.OFERTA_SELECCIONADA || n.getOferta() == null) {
+            return NotificacionResponse.EstadoRecepcion.NO_REQUIERE;
+        }
+        if (n.getRecibidaEn() != null) return NotificacionResponse.EstadoRecepcion.CONFIRMADA;
+        return destinatario.getFechaLectura() == null
+                ? NotificacionResponse.EstadoRecepcion.SIN_LEER : NotificacionResponse.EstadoRecepcion.PENDIENTE;
     }
 }

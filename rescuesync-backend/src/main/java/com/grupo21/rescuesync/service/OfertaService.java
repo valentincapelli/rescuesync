@@ -4,6 +4,8 @@ import com.grupo21.rescuesync.dto.ofertas.CrearOfertaRequest;
 import com.grupo21.rescuesync.dto.ofertas.EditarOfertaRequest;
 import com.grupo21.rescuesync.dto.ofertas.OfertaEvaluadaResponse;
 import com.grupo21.rescuesync.dto.ofertas.OfertaResponse;
+import com.grupo21.rescuesync.dto.ofertas.OfertaPropiaResponse;
+import com.grupo21.rescuesync.dto.LoteResponse;
 import com.grupo21.rescuesync.dto.ofertas.OfertasEvaluadasEmergenciaResponse;
 import com.grupo21.rescuesync.dto.ofertas.OfertasEvaluadasEmergenciaResponse.LoteEvaluado;
 import com.grupo21.rescuesync.dto.ofertas.SeleccionarOfertasRequest;
@@ -114,6 +116,7 @@ public class OfertaService {
 
     @Transactional
     public OfertaResponse editar(
+                Long loteId,
                 Long ofertaId,
                 EditarOfertaRequest request,
                 String emailUsuario
@@ -126,6 +129,10 @@ public class OfertaService {
                         )
                 );
         
+        if (!oferta.getLote().getId().equals(loteId)) {
+            throw new ResourceNotFoundException("Oferta", ofertaId);
+        }
+
         Usuario usuario = usuarioRepository.findByEmail(emailUsuario)
                 .orElseThrow(() ->
                         new ResourceNotFoundException(
@@ -149,6 +156,9 @@ public class OfertaService {
         }
 
         validarLotePublicado(oferta.getLote());
+        if (oferta.getEstado() != EstadoOferta.PENDIENTE) {
+            throw new BusinessException("Solo se pueden editar ofertas pendientes de evaluación");
+        }
 
         oferta.setCantidadOfrecida(request.cantidadOfrecida());
         oferta.setObservaciones(request.observaciones());
@@ -158,9 +168,32 @@ public class OfertaService {
         return toResponse(actualizada);
         }
 
+    @Transactional(readOnly = true)
+    public List<OfertaPropiaResponse> listarPropias(String email) {
+        Usuario usuario = usuarioRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado"));
+        if (usuario.getOng() == null) {
+            throw new BusinessException("El usuario no está asociado a una ONG");
+        }
+        return ofertaRepository.findByOngIdOrderByIdDesc(usuario.getOng().getId()).stream().map(oferta -> {
+            Lote lote = oferta.getLote();
+            Emergencia emergencia = lote.getEmergencia();
+            boolean editable = oferta.getEstado() == EstadoOferta.PENDIENTE
+                    && lote.getEstado() == EstadoLote.PUBLICADO
+                    && emergencia.getEstado() == EstadoEmergencia.CONVOCATORIA_PUBLICADA
+                    && emergencia.getFechaCierreConvocatoria() != null
+                    && LocalDateTime.now().isBefore(emergencia.getFechaCierreConvocatoria());
+            return new OfertaPropiaResponse(toResponse(oferta),
+                    new LoteResponse(lote.getId(), emergencia.getId(), lote.getTipoRecurso(),
+                            lote.getDescripcion(), lote.getCantidadRequerida(), lote.getUnidadMedida(), lote.getEstado()),
+                    emergencia.getId(), editable);
+        }).toList();
+    }
+
     /** Solo se oferta sobre lotes de una convocatoria publicada (no en BORRADOR ni cerrados). */
         private void validarLotePublicado(Lote lote) {
-        if (lote.getEstado() != EstadoLote.PUBLICADO) {
+        if (lote.getEstado() != EstadoLote.PUBLICADO
+                || lote.getEmergencia().getEstado() != EstadoEmergencia.CONVOCATORIA_PUBLICADA) {
                 throw new BusinessException(
                         "El lote " + lote.getId() + " está en estado " + lote.getEstado()
                                 + ": no admite ofertas"
@@ -315,7 +348,8 @@ public class OfertaService {
             }
         }
 
-        if (emergencia.getEstado() != EstadoEmergencia.COBERTURA_EVALUADA
+        if (emergencia.isCoberturaSincronizacionPendiente() || emergencia.isResolucionCoberturaPendiente()
+                || emergencia.getEstado() != EstadoEmergencia.COBERTURA_EVALUADA
                 && emergencia.getEstado() != EstadoEmergencia.COBERTURA_PARCIAL) {
             throw new BusinessException(
                     "La emergencia no está disponible para seleccionar ofertas"
@@ -348,9 +382,9 @@ public class OfertaService {
         // 5b. Solo se adjudican ofertas validadas: una sin habilitación nacional no se puede seleccionar
         boolean seleccionaSinHabilitacion = ofertasEvaluadas.stream()
                 .filter(oferta -> idsSeleccionados.contains(oferta.getId()))
-                .anyMatch(oferta -> oferta.getValidacion() != null
-                        && oferta.getValidacion().getClasificacion() != null
-                        && !oferta.getValidacion().getClasificacion().esSeleccionable());
+                .anyMatch(oferta -> oferta.getValidacion() == null
+                        || oferta.getValidacion().getClasificacion() == null
+                        || !oferta.getValidacion().getClasificacion().esSeleccionable());
         if (seleccionaSinHabilitacion) {
             throw new BusinessException(
                     "Una o más ofertas no tienen habilitación del Sistema Nacional para el tipo de recurso"
@@ -463,7 +497,7 @@ public class OfertaService {
             );
 
             notificacionService.crearNotificacion(
-                    ong,
+                    oferta,
                     titulo,
                     mensaje,
                     tipo

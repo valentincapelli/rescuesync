@@ -86,6 +86,18 @@ class CatalogoApiTests {
     // ---------------------------------------------------------------- registro de ONGs
 
     @Test
+    void loginYLogoutRecuperanUnaCookieInvalidaSinAbrirRutasProtegidas() throws Exception {
+        Cookie invalida = new Cookie("access_token", "token-invalido");
+        mockMvc.perform(post("/api/auth/login").cookie(invalida)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(Map.of("username", "rep.a", "password", PASSWORD))))
+                .andExpect(status().isOk()).andExpect(cookie().exists("access_token"));
+        mockMvc.perform(post("/api/auth/logout").cookie(invalida))
+                .andExpect(status().isNoContent()).andExpect(cookie().maxAge("access_token", 0));
+        mockMvc.perform(get("/api/ongs").cookie(invalida)).andExpect(status().isUnauthorized());
+    }
+
+    @Test
     void registroEsPublicoCreaOngHabilitadaYPermiteLogin() throws Exception {
         mockMvc.perform(post("/api/ongs/registro")
                         .contentType(MediaType.APPLICATION_JSON)

@@ -10,6 +10,8 @@ public record NotificacionResponse(
         String mensaje,
         TipoNotificacion tipo,
         Instant fechaCreacion,
-        boolean leida
+        boolean leida,
+        EstadoRecepcion recepcion
 ) {
+    public enum EstadoRecepcion { NO_REQUIERE, SIN_LEER, PENDIENTE, CONFIRMADA }
 }

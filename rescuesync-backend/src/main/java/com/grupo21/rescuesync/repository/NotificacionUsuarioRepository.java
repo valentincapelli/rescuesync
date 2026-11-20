@@ -20,4 +20,6 @@ public interface NotificacionUsuarioRepository
     );
 
     long countByUsuarioIdAndFechaLecturaIsNull(Long usuarioId);
+
+    boolean existsByNotificacionIdAndFechaLecturaIsNotNull(Long notificacionId);
 }

@@ -10,6 +10,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -46,8 +48,9 @@ public class LoteController {
     @Operation(summary = "Listar los lotes de una emergencia")
     @PreAuthorize("hasAuthority('CONSULTAR_LOTES')")
     @GetMapping
-    public List<LoteResponse> listar(@PathVariable Long emergenciaId) {
-        return loteService.listarPorEmergencia(emergenciaId);
+    public List<LoteResponse> listar(@PathVariable Long emergenciaId,
+            @AuthenticationPrincipal UserDetails usuario) {
+        return loteService.listarPorEmergencia(emergenciaId, usuario.getUsername());
     }
 
     @Operation(summary = "Editar un lote mientras la convocatoria no esté publicada")

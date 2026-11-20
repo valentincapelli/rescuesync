@@ -23,9 +23,14 @@ public interface IntencionSeleccionBonitaRepository extends JpaRepository<Intenc
     Optional<IntencionSeleccionBonita> findByOfertaId(Long ofertaId);
 
     @Query("select distinct e.id from IntencionSeleccionBonita i join i.oferta o join o.lote l "
-            + "join l.emergencia e where i.estado in :estados and not exists ("
+            + "join l.emergencia e where ((i.estado in :estados and not exists (select k.id from IntencionSeleccionBonita k "
+            + "where k.oferta.lote.emergencia = e and k.estado = 'EN_CICLO')) or (i.estado = 'EN_CICLO' and exists ("
+            + "select n.id from Notificacion n where n.oferta = o and n.tipo = 'OFERTA_SELECCIONADA' "
+            + "and (n.notificadaEn is null or (n.recibidaEn is null and exists (select d.id from NotificacionUsuario d "
+            + "where d.notificacion = n and d.fechaLectura is not null))))) or exists ("
+            + "select p.id from Notificacion p where p.oferta = o and p.bonitaPendiente = true)) and not exists ("
             + "select j.id from IntencionSeleccionBonita j where j.oferta.lote.emergencia = e "
-            + "and j.estado in ('EN_CICLO', 'INCIDENTE')) order by e.id")
+            + "and j.estado = 'INCIDENTE') order by e.id")
     List<Long> buscarEmergenciasRecuperables(@Param("estados") Collection<EstadoIntencionSeleccionBonita> estados,
                                             Pageable pagina);
 }

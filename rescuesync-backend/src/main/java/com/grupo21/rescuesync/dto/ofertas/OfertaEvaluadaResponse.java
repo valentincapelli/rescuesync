@@ -20,7 +20,7 @@ public record OfertaEvaluadaResponse(
         Validacion validacion
 ) {
 
-    /** Null si la oferta se marcó EVALUADA sin pasar por la validación nacional (datos de demo). */
+    /** Null en datos incompletos que no tienen resultado de validación nacional. */
     public record Validacion(
             ClasificacionOferta clasificacion,
             NivelCompetencia nivelCompetencia,
@@ -40,6 +40,7 @@ public record OfertaEvaluadaResponse(
 
     /** Las ofertas sin habilitación no se muestran para seleccionar (eslabón 5: solo ofertas validadas). */
     public boolean seleccionable() {
-        return validacion == null || validacion.clasificacion().esSeleccionable();
+        return validacion != null && validacion.clasificacion() != null
+                && validacion.clasificacion().esSeleccionable();
     }
 }

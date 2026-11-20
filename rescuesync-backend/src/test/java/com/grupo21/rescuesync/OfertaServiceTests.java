@@ -4,6 +4,8 @@ import com.grupo21.rescuesync.dto.ofertas.OfertasEvaluadasEmergenciaResponse;
 import com.grupo21.rescuesync.dto.ofertas.SeleccionarOfertasRequest;
 import com.grupo21.rescuesync.exception.BusinessException;
 import com.grupo21.rescuesync.model.Emergencia;
+import com.grupo21.rescuesync.model.ValidacionOferta;
+import com.grupo21.rescuesync.model.ClasificacionOferta;
 import com.grupo21.rescuesync.model.EstadoEmergencia;
 import com.grupo21.rescuesync.model.EstadoLote;
 import com.grupo21.rescuesync.model.EstadoOferta;
@@ -190,6 +192,7 @@ class OfertaServiceTests {
         Ong ong = mock(Ong.class);
         Oferta oferta = mock(Oferta.class);
         when(oferta.getId()).thenReturn(55L);
+        when(oferta.getValidacion()).thenReturn(habilitada());
         when(oferta.getLote()).thenReturn(lote);
         when(oferta.getOng()).thenReturn(ong);
         when(oferta.getCantidadOfrecida()).thenReturn(75);
@@ -201,6 +204,7 @@ class OfertaServiceTests {
         when(ofertaRechazada.getCantidadOfrecida()).thenReturn(40);
         Oferta otraSeleccionada = mock(Oferta.class);
         when(otraSeleccionada.getId()).thenReturn(54L);
+        when(otraSeleccionada.getValidacion()).thenReturn(habilitada());
         when(otraSeleccionada.getLote()).thenReturn(lote);
         when(otraSeleccionada.getOng()).thenReturn(mock(Ong.class));
         when(otraSeleccionada.getCantidadOfrecida()).thenReturn(30);
@@ -225,7 +229,7 @@ class OfertaServiceTests {
 
         ArgumentCaptor<String> mensaje = ArgumentCaptor.forClass(String.class);
         verify(notificacionService, times(3)).crearNotificacion(
-                any(Ong.class),
+                any(Oferta.class),
                 anyString(),
                 mensaje.capture(),
                 any(TipoNotificacion.class)
@@ -241,6 +245,10 @@ class OfertaServiceTests {
                         .contains("Tu oferta #56 no fue seleccionada")
                         .contains("Municipio de prueba", "Agua para el refugio central", "40 litros")
         );
+    }
+
+    private ValidacionOferta habilitada() {
+        return new ValidacionOferta(ClasificacionOferta.PRINCIPAL, null, null, null, null, java.time.Instant.now());
     }
 
     private Emergencia emergencia(
@@ -277,6 +285,7 @@ class OfertaServiceTests {
         when(oferta.getOng()).thenReturn(ong);
         when(oferta.getCantidadOfrecida()).thenReturn(50);
         when(oferta.getEstado()).thenReturn(EstadoOferta.EVALUADA);
+        when(oferta.getValidacion()).thenReturn(habilitada());
         return oferta;
     }
 }

@@ -33,6 +33,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final ObjectMapper objectMapper;
 
     @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        String path = request.getRequestURI().substring(request.getContextPath().length());
+        // Login y logout deben poder reemplazar o eliminar una cookie inválida o vencida.
+        return "POST".equals(request.getMethod())
+                && ("/api/auth/login".equals(path) || "/api/auth/logout".equals(path));
+    }
+
+    @Override
         protected void doFilterInternal(
                 HttpServletRequest request,
                 HttpServletResponse response,

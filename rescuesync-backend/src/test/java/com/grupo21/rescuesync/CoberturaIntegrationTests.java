@@ -3,6 +3,10 @@ package com.grupo21.rescuesync;
 import com.grupo21.rescuesync.model.Rol;
 import com.grupo21.rescuesync.model.Usuario;
 import com.grupo21.rescuesync.security.JwtService;
+import com.grupo21.rescuesync.client.BonitaClient;
+import com.grupo21.rescuesync.client.BonitaCasoInfo;
+import com.grupo21.rescuesync.client.BonitaActividadArchivada;
+import com.grupo21.rescuesync.exception.BonitaIntegrationException;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -14,9 +18,18 @@ import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
+import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.*;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -33,6 +46,7 @@ class CoberturaIntegrationTests {
     @Autowired private MockMvc mockMvc;
     @Autowired private JdbcTemplate jdbcTemplate;
     @Autowired private JwtService jwtService;
+    @MockitoBean private BonitaClient bonita;
 
     private String tokenCentro;
     private String tokenOng;
@@ -41,6 +55,9 @@ class CoberturaIntegrationTests {
 
     @BeforeEach
     void preparar() {
+        when(bonita.buscarCaso("700")).thenReturn(Optional.of(new BonitaCasoInfo("700", null, "started", null, null)));
+        when(bonita.buscarTareasActivas(eq("700"), anyString()))
+                .thenAnswer(call -> List.of("task-" + call.getArgument(1)));
         jdbcTemplate.update("INSERT INTO municipios (nombre, created_at, updated_at) "
                 + "VALUES ('Municipio cobertura', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)");
         municipioId = ultimoId("municipios");
@@ -126,7 +143,7 @@ class CoberturaIntegrationTests {
     }
 
     @Test
-    void sinCoberturaReabreLaConvocatoriaSinCambiarEstados() throws Exception {
+    void sinCoberturaEsperaRepublicacionYReabreUnNuevoPlazo() throws Exception {
         long emergenciaId = crearEmergencia("CONVOCATORIA_PUBLICADA");
         long lote = crearLote(emergenciaId, 100);
 
@@ -136,8 +153,66 @@ class CoberturaIntegrationTests {
 
         assertEquals("PUBLICADO", estadoLote(lote));
         assertEquals(0, cambiosRegistrados(emergenciaId));
-        // Puede volver a decidirse tras reabrir la convocatoria.
-        decidir(emergenciaId, "SIN_COBERTURA", tokenCentro).andExpect(status().isOk());
+        mockMvc.perform(get(ruta(emergenciaId)).cookie(new Cookie("access_token", tokenCentro)))
+                .andExpect(jsonPath("$.republicacionPendiente").value(true))
+                .andExpect(jsonPath("$.plazoVencido").value(true));
+        mockMvc.perform(post("/api/emergencias/" + emergenciaId + "/convocatoria")
+                        .cookie(new Cookie("access_token", tokenCentro))).andExpect(status().isOk());
+        verify(bonita).completarTareaPorId("task-Publicar convocatoria", Map.of());
+        mockMvc.perform(get(ruta(emergenciaId)).cookie(new Cookie("access_token", tokenCentro)))
+                .andExpect(jsonPath("$.republicacionPendiente").value(false))
+                .andExpect(jsonPath("$.plazoVencido").value(false));
+        decidir(emergenciaId, "SIN_COBERTURA", tokenCentro).andExpect(status().isConflict());
+    }
+
+    @Test
+    void parcialSeResuelveConObservacionYNoEjecutaDosVecesLaTarea() throws Exception {
+        long id = crearEmergencia("CONVOCATORIA_PUBLICADA");
+        crearOferta(crearLote(id, 100), 40);
+        decidir(id, "PARCIAL", tokenCentro).andExpect(status().isOk());
+        mockMvc.perform(post(ruta(id) + "/resolucion").cookie(new Cookie("access_token", tokenCentro))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"observacion\":\"   \"}"))
+                .andExpect(status().isBadRequest());
+        mockMvc.perform(post(ruta(id) + "/resolucion").cookie(new Cookie("access_token", tokenCentro))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"observacion\":\"Atender primero los refugios con los recursos disponibles\"}"))
+                .andExpect(status().isOk());
+        mockMvc.perform(get(ruta(id)).cookie(new Cookie("access_token", tokenCentro)))
+                .andExpect(jsonPath("$.resolucionPendiente").value(false))
+                .andExpect(jsonPath("$.resolucion").value("Atender primero los refugios con los recursos disponibles"));
+        mockMvc.perform(post(ruta(id) + "/resolucion").cookie(new Cookie("access_token", tokenCentro))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"observacion\":\"Reintento\"}"))
+                .andExpect(status().isConflict());
+        verify(bonita, times(1)).completarTareaPorId("task-Resolver cobertura incompleta", Map.of());
+    }
+
+    @Test
+    void timeoutConservaIntencionYReconciliaLaTareaSinRepetirla() throws Exception {
+        long id = crearEmergencia("CONVOCATORIA_PUBLICADA");
+        crearOferta(crearLote(id, 100), 100);
+        String tarea = "task-Evaluar cobertura de lotes";
+        doThrow(new BonitaIntegrationException("Respuesta perdida", null))
+                .when(bonita).completarTareaPorId(eq(tarea), anyMap());
+        decidir(id, "COMPLETA", tokenCentro).andExpect(status().isAccepted());
+        assertEquals("CONVOCATORIA_PUBLICADA", estadoEmergencia(id));
+        when(bonita.listarActividadesArchivadas("700")).thenReturn(List.of(
+                new BonitaActividadArchivada("archivo", tarea, "Evaluar cobertura de lotes", "USER_TASK", "completed", null, null)));
+        mockMvc.perform(post(ruta(id) + "/sincronizar").cookie(new Cookie("access_token", tokenCentro)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.sincronizacionPendiente").value(false));
+        assertEquals("COBERTURA_EVALUADA", estadoEmergencia(id));
+        verify(bonita, times(1)).completarTareaPorId(eq(tarea), anyMap());
+    }
+
+    @Test
+    void noEvaluaAntesDelCierreNiSobreUnCasoAjeno() throws Exception {
+        long id = crearEmergencia("CONVOCATORIA_PUBLICADA");
+        crearOferta(crearLote(id, 100), 100);
+        jdbcTemplate.update("UPDATE emergencias SET fecha_cierre_convocatoria=DATEADD('DAY',1,CURRENT_TIMESTAMP) WHERE id=?", id);
+        decidir(id, "COMPLETA", tokenCentro).andExpect(status().isConflict());
+        jdbcTemplate.update("UPDATE emergencias SET fecha_cierre_convocatoria=DATEADD('DAY',-1,CURRENT_TIMESTAMP) WHERE id=?", id);
+        when(bonita.leerVariable("700", "emergenciaId", false)).thenReturn(Optional.of("999999"));
+        decidir(id, "COMPLETA", tokenCentro).andExpect(status().isBadGateway());
+        verify(bonita, never()).completarTareaPorId(anyString(), anyMap());
+        assertEquals("CONVOCATORIA_PUBLICADA", estadoEmergencia(id));
     }
 
     @Test
@@ -189,7 +264,10 @@ class CoberturaIntegrationTests {
                         + "(tipo_desastre, nivel_gravedad, zona_afectada, descripcion, municipio_id, estado, created_at, updated_at) "
                         + "VALUES ('INUNDACION', 'ALTO', 'Zona de prueba', 'Emergencia de prueba', ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
                 municipioId, estado);
-        return ultimoId("emergencias");
+        long id = ultimoId("emergencias");
+        jdbcTemplate.update("UPDATE emergencias SET bonita_case_id=700, fecha_cierre_convocatoria=DATEADD('DAY',-1,CURRENT_TIMESTAMP) WHERE id=?", id);
+        when(bonita.leerVariable("700", "emergenciaId", false)).thenReturn(Optional.of(Long.toString(id)));
+        return id;
     }
 
     private long crearLote(long emergenciaId, int cantidad) {
