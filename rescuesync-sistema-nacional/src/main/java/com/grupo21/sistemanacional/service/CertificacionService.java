@@ -4,6 +4,7 @@ import com.grupo21.sistemanacional.dto.certificaciones.ActualizarCertificacionRe
 import com.grupo21.sistemanacional.dto.certificaciones.CapacidadHabilitadaResponse;
 import com.grupo21.sistemanacional.dto.certificaciones.CertificacionResponse;
 import com.grupo21.sistemanacional.dto.certificaciones.CrearCertificacionRequest;
+import com.grupo21.sistemanacional.dto.certificaciones.DisponibilidadUnidadResponse;
 import com.grupo21.sistemanacional.dto.certificaciones.ValidacionCertificacionResponse;
 import com.grupo21.sistemanacional.dto.certificaciones.ValidarCertificacionRequest;
 import com.grupo21.sistemanacional.exception.BusinessException;
@@ -12,6 +13,7 @@ import com.grupo21.sistemanacional.model.Certificacion;
 import com.grupo21.sistemanacional.model.Ong;
 import com.grupo21.sistemanacional.repository.CertificacionRepository;
 import com.grupo21.sistemanacional.repository.OngRepository;
+import com.grupo21.sistemanacional.repository.RecursoRepository;
 import com.grupo21.sistemanacional.security.AccesoOng;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -33,6 +35,7 @@ public class CertificacionService {
 
     private final CertificacionRepository certificacionRepository;
     private final OngRepository ongRepository;
+    private final RecursoRepository recursoRepository;
     private final AccesoOng accesoOng;
 
     @Transactional
@@ -66,11 +69,11 @@ public class CertificacionService {
         Ong ong = ongRepository.findByCuit(request.cuit()).orElse(null);
         if (ong == null) {
             return new ValidacionCertificacionResponse(request.cuit(), request.tipoRecurso(), null, List.of(),
-                    "No hay una ONG registrada con el CUIT indicado");
+                    "No hay una ONG registrada con el CUIT indicado", List.of());
         }
         if (!ong.isHabilitada()) {
             return new ValidacionCertificacionResponse(request.cuit(), request.tipoRecurso(),
-                    ong.getEstadoHabilitacion(), List.of(), "La ONG no está habilitada en el Sistema Nacional");
+                    ong.getEstadoHabilitacion(), List.of(), "La ONG no está habilitada en el Sistema Nacional", List.of());
         }
 
         List<CapacidadHabilitadaResponse> capacidades = certificacionRepository
@@ -80,8 +83,13 @@ public class CertificacionService {
         String observaciones = capacidades.isEmpty()
                 ? "La ONG no tiene una certificación vigente para el tipo de recurso solicitado"
                 : "Se informan el nivel de competencia y el riesgo máximo certificados para el tipo de recurso solicitado";
+        List<DisponibilidadUnidadResponse> disponibilidad = recursoRepository.findByOngIdOrderByTipoRecurso(ong.getId())
+                .stream()
+                .filter(r -> r.getTipoRecurso() == request.tipoRecurso())
+                .map(r -> new DisponibilidadUnidadResponse(r.getUnidadMedida(), r.getDisponible()))
+                .toList();
         return new ValidacionCertificacionResponse(request.cuit(), request.tipoRecurso(),
-                ong.getEstadoHabilitacion(), capacidades, observaciones);
+                ong.getEstadoHabilitacion(), capacidades, observaciones, disponibilidad);
     }
 
     @Transactional

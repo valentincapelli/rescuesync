@@ -16,5 +16,8 @@ public record ValidacionCertificacionResponse(
         @Schema(description = "Tipo de recurso. Valores: PERSONAL_VOLUNTARIO, ALIMENTOS, AGUA_POTABLE, MEDICAMENTOS, ABRIGO_Y_ROPA, TRANSPORTE, MAQUINARIA_PESADA, REFUGIO_TEMPORAL, OTRO.", example = "ALIMENTOS") TipoRecurso tipoRecurso,
         @Schema(description = "Estado de la ONG en el Sistema Nacional. Solo las HABILITADA pueden comprometer recursos. null si el CUIT no está registrado.", example = "HABILITADA") EstadoHabilitacion estadoHabilitacion,
         @Schema(description = "Capacidades vigentes para el tipo consultado. Lista vacía si no hay certificación vigente, la ONG no está habilitada o el CUIT no existe.") List<CapacidadHabilitadaResponse> capacidadesHabilitadas,
-        @Schema(description = "Explica el resultado, en especial cuando la lista de capacidades está vacía.", example = "Se informan el nivel de competencia y el riesgo máximo certificados para el tipo de recurso solicitado") String observaciones
+        @Schema(description = "Explica el resultado, en especial cuando la lista de capacidades está vacía.", example = "Se informan el nivel de competencia y el riesgo máximo certificados para el tipo de recurso solicitado") String observaciones,
+        @Schema(description = "Stock disponible de la ONG para el tipo consultado, una entrada por unidad de medida. "
+                + "Permite anticipar que una oferta supera el stock antes de comprometerla. Lista vacía si la ONG no está "
+                + "registrada, no está habilitada o no cargó recursos de ese tipo.") List<DisponibilidadUnidadResponse> disponibilidad
 ) {}

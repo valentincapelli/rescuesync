@@ -252,6 +252,31 @@ class ValidacionCertificacionApiTests {
                 .isEqualTo(certificacion.getUpdatedAt());
     }
 
+    @Test
+    void informaElStockDisponibleDeLaOngPorUnidadSoloDelTipoConsultado() throws Exception {
+        certificar(null);
+        Recurso raciones = new Recurso(ong, TipoRecurso.ALIMENTOS, "raciones", 1000);
+        raciones.comprometer(300);
+        recursoRepository.save(raciones);
+        recursoRepository.save(new Recurso(ong, TipoRecurso.ALIMENTOS, "kg", 50));
+        recursoRepository.save(new Recurso(ong, TipoRecurso.AGUA_POTABLE, "litros", 999));
+
+        mockMvc.perform(validar(ong.getCuit(), TipoRecurso.ALIMENTOS).cookie(bonita))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.disponibilidad.length()").value(2))
+                .andExpect(jsonPath("$.disponibilidad[?(@.unidadMedida=='raciones')].cantidadDisponible").value(700))
+                .andExpect(jsonPath("$.disponibilidad[?(@.unidadMedida=='kg')].cantidadDisponible").value(50));
+    }
+
+    @Test
+    void sinRecursosCargadosLaDisponibilidadVieneVacia() throws Exception {
+        certificar(null);
+
+        mockMvc.perform(validar(ong.getCuit(), TipoRecurso.ALIMENTOS).cookie(bonita))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.disponibilidad.length()").value(0));
+    }
+
     private Certificacion certificar(LocalDate vencimiento) {
         return certificacionRepository.save(new Certificacion(ong, TipoRecurso.ALIMENTOS,
                 NivelCompetencia.INTERMEDIO, NivelGravedad.MEDIO, vencimiento));
