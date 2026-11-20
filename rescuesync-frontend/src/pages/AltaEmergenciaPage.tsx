@@ -4,6 +4,7 @@ import './AltaEmergenciaPage.css';
 
 import { crearEmergencia } from '../api/emergencias';
 import { ApiError } from '../api/client';
+import { enfocarPrimerError, propsCampo } from '../components/accesibilidadFormulario';
 
 import {
   NIVEL_GRAVEDAD_LABELS,
@@ -24,6 +25,8 @@ const initialForm: CrearEmergenciaRequest = {
 type FieldErrors = Partial<
   Record<keyof CrearEmergenciaRequest, string>
 >;
+
+const CAMPOS = ['tipoDesastre', 'nivelGravedad', 'zonaAfectada', 'descripcion'] as const;
 
 function validate(
   form: CrearEmergenciaRequest,
@@ -85,6 +88,7 @@ export function AltaEmergenciaPage() {
     setFieldErrors(errors);
 
     if (Object.keys(errors).length > 0) {
+      enfocarPrimerError(CAMPOS, errors);
       return;
     }
 
@@ -159,6 +163,7 @@ export function AltaEmergenciaPage() {
 
             <select
               id="tipoDesastre"
+              {...propsCampo('tipoDesastre', fieldErrors.tipoDesastre)}
               value={form.tipoDesastre}
               onChange={(e) =>
                 updateField(
@@ -178,7 +183,7 @@ export function AltaEmergenciaPage() {
             </select>
 
             {fieldErrors.tipoDesastre && (
-              <span className="field-error">
+              <span className="field-error" id="tipoDesastre-error">
                 {fieldErrors.tipoDesastre}
               </span>
             )}
@@ -197,6 +202,7 @@ export function AltaEmergenciaPage() {
 
             <select
               id="nivelGravedad"
+              {...propsCampo('nivelGravedad', fieldErrors.nivelGravedad)}
               value={form.nivelGravedad}
               onChange={(e) =>
                 updateField(
@@ -216,7 +222,7 @@ export function AltaEmergenciaPage() {
             </select>
 
             {fieldErrors.nivelGravedad && (
-              <span className="field-error">
+              <span className="field-error" id="nivelGravedad-error">
                 {fieldErrors.nivelGravedad}
               </span>
             )}
@@ -236,6 +242,8 @@ export function AltaEmergenciaPage() {
 
           <input
             id="zonaAfectada"
+            {...propsCampo('zonaAfectada', fieldErrors.zonaAfectada)}
+            aria-required="true"
             type="text"
             value={form.zonaAfectada}
             onChange={(e) =>
@@ -249,7 +257,7 @@ export function AltaEmergenciaPage() {
           />
 
           {fieldErrors.zonaAfectada && (
-            <span className="field-error">
+            <span className="field-error" id="zonaAfectada-error">
               {fieldErrors.zonaAfectada}
             </span>
           )}
@@ -268,6 +276,8 @@ export function AltaEmergenciaPage() {
 
           <textarea
             id="descripcion"
+            {...propsCampo('descripcion', fieldErrors.descripcion)}
+            aria-required="true"
             value={form.descripcion}
             onChange={(e) =>
               updateField(
@@ -279,7 +289,7 @@ export function AltaEmergenciaPage() {
           />
 
           {fieldErrors.descripcion && (
-            <span className="field-error">
+            <span className="field-error" id="descripcion-error">
               {fieldErrors.descripcion}
             </span>
           )}

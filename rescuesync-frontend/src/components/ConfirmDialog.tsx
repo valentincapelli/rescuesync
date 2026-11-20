@@ -6,6 +6,8 @@ interface Props {
   mensaje: string;
   confirmarLabel?: string;
   cancelarLabel?: string;
+  /** Acción irreversible (por ejemplo, borrar): el foco inicial va a Cancelar, para que Enter no la ejecute. */
+  destructivo?: boolean;
   onConfirmar: () => void;
   onCancelar: () => void;
 }
@@ -19,21 +21,24 @@ export function ConfirmDialog({
   mensaje,
   confirmarLabel = 'Confirmar',
   cancelarLabel = 'Cancelar',
+  destructivo = false,
   onConfirmar,
   onCancelar,
 }: Props) {
   const confirmarRef = useRef<HTMLButtonElement>(null);
+  const cancelarRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const anteriorRef = useRef<HTMLElement | null>(null);
 
   // Al abrir se recuerda quién tenía el foco; al cerrar se le devuelve (si no, el foco se pierde en <body>).
   useEffect(() => {
     anteriorRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    confirmarRef.current?.focus();
+    (destructivo ? cancelarRef : confirmarRef).current?.focus();
     return () => {
       const anterior = anteriorRef.current;
       if (anterior && anterior.isConnected) anterior.focus();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -75,7 +80,7 @@ export function ConfirmDialog({
         <h3 id="confirm-titulo">{titulo}</h3>
         <p id="confirm-mensaje">{mensaje}</p>
         <div className="form-actions">
-          <button type="button" className="secondary" onClick={onCancelar}>
+          <button type="button" className="secondary" ref={cancelarRef} onClick={onCancelar}>
             {cancelarLabel}
           </button>
           <button type="button" ref={confirmarRef} onClick={onConfirmar}>

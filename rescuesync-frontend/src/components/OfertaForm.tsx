@@ -1,6 +1,7 @@
-import { useId, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import type { FormEvent } from 'react';
 import { ApiError } from '../api/client';
+import { enfocarPrimerError } from './accesibilidadFormulario';
 import type { Lote } from '../types/lote';
 import {
   ESTADO_OFERTA_LABELS,
@@ -73,6 +74,13 @@ export function OfertaForm({ lote, oferta: inicial, onSubmit, onCancel }: Props)
   const [creada, setCreada] =
     useState<Oferta | null>(null);
 
+  // Al abrirse para editar, el foco va al formulario (si no, queda en el botón "Editar").
+  // Solo al montarse: si dependiera de `inicial`, recargar la lista le robaría el foco al usuario mientras escribe.
+  useEffect(() => {
+    if (inicial) document.getElementById(`${formId}-cantidadOfrecida`)?.focus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   function updateField(
     field: keyof OfertaFormState,
     value: string,
@@ -96,6 +104,9 @@ export function OfertaForm({ lote, oferta: inicial, onSubmit, onCancel }: Props)
     setFieldErrors(errors);
 
     if (Object.keys(errors).length > 0) {
+      enfocarPrimerError([`${formId}-cantidadOfrecida`], {
+        [`${formId}-cantidadOfrecida`]: errors.cantidadOfrecida,
+      });
       return;
     }
 

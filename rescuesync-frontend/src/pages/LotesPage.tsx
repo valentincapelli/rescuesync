@@ -301,6 +301,7 @@ export function LotesPage() {
           titulo="Borrar lote"
           mensaje={`¿Borrar el lote #${confirmacion.lote.id} (${confirmacion.lote.cantidadRequerida} ${confirmacion.lote.unidadMedida})?`}
           confirmarLabel="Borrar"
+          destructivo
           onCancelar={() => setConfirmacion(null)}
           onConfirmar={() => {
             const lote = confirmacion.lote;

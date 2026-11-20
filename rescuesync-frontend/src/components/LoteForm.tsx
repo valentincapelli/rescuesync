@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { ApiError } from '../api/client';
+import { enfocarPrimerError, propsCampo } from './accesibilidadFormulario';
 import {
   TIPO_RECURSO_LABELS,
   TIPOS_RECURSO,
@@ -82,6 +83,8 @@ export function LoteForm({ editando, onSubmit, onCancelEdit }: Props) {
     setForm(editando ? fromLote(editando) : emptyForm);
     setFieldErrors({});
     setGeneralError(null);
+    // Al pasar a editar, el foco va al formulario (si no, queda en el botón "Editar" de la tabla).
+    if (editando) window.setTimeout(() => document.getElementById('cantidadRequerida')?.focus(), 0);
   }, [editando]);
 
   function updateField<K extends keyof LoteFormState>(field: K, value: LoteFormState[K]) {
@@ -107,6 +110,10 @@ export function LoteForm({ editando, onSubmit, onCancelEdit }: Props) {
     const errors = validate(form);
     setFieldErrors(errors);
     if (Object.keys(errors).length > 0) {
+      enfocarPrimerError(
+        ['tipoRecurso', 'cantidadRequerida', 'unidadMedida', 'descripcionLote'],
+        { ...errors, descripcionLote: errors.descripcion },
+      );
       return;
     }
 
@@ -147,6 +154,7 @@ export function LoteForm({ editando, onSubmit, onCancelEdit }: Props) {
           <label htmlFor="tipoRecurso">Tipo de recurso</label>
           <select
             id="tipoRecurso"
+            {...propsCampo('tipoRecurso', fieldErrors.tipoRecurso)}
             value={form.tipoRecurso}
             onChange={(e) => changeTipo(e.target.value as TipoRecurso)}
           >
@@ -156,13 +164,15 @@ export function LoteForm({ editando, onSubmit, onCancelEdit }: Props) {
               </option>
             ))}
           </select>
-          {fieldErrors.tipoRecurso && <span className="field-error">{fieldErrors.tipoRecurso}</span>}
+          {fieldErrors.tipoRecurso && <span className="field-error" id="tipoRecurso-error">{fieldErrors.tipoRecurso}</span>}
         </div>
 
         <div className={`form-field narrow ${fieldErrors.cantidadRequerida ? 'has-error' : ''}`}>
           <label htmlFor="cantidadRequerida">Cantidad</label>
           <input
             id="cantidadRequerida"
+            {...propsCampo('cantidadRequerida', fieldErrors.cantidadRequerida)}
+            aria-required="true"
             type="number"
             min={1}
             step={1}
@@ -171,13 +181,15 @@ export function LoteForm({ editando, onSubmit, onCancelEdit }: Props) {
             onChange={(e) => updateField('cantidadRequerida', e.target.value)}
             placeholder="Ej: 1000"
           />
-          {fieldErrors.cantidadRequerida && <span className="field-error">{fieldErrors.cantidadRequerida}</span>}
+          {fieldErrors.cantidadRequerida && <span className="field-error" id="cantidadRequerida-error">{fieldErrors.cantidadRequerida}</span>}
         </div>
 
         <div className={`form-field narrow ${fieldErrors.unidadMedida ? 'has-error' : ''}`}>
           <label htmlFor="unidadMedida">Unidad</label>
           <input
             id="unidadMedida"
+            {...propsCampo('unidadMedida', fieldErrors.unidadMedida)}
+            aria-required="true"
             type="text"
             list="unidades-sugeridas"
             maxLength={30}
@@ -189,7 +201,7 @@ export function LoteForm({ editando, onSubmit, onCancelEdit }: Props) {
               <option key={u} value={u} />
             ))}
           </datalist>
-          {fieldErrors.unidadMedida && <span className="field-error">{fieldErrors.unidadMedida}</span>}
+          {fieldErrors.unidadMedida && <span className="field-error" id="unidadMedida-error">{fieldErrors.unidadMedida}</span>}
         </div>
       </div>
 
@@ -197,13 +209,15 @@ export function LoteForm({ editando, onSubmit, onCancelEdit }: Props) {
         <label htmlFor="descripcionLote">Descripción</label>
         <input
           id="descripcionLote"
+          {...propsCampo('descripcionLote', fieldErrors.descripcion)}
+          aria-required="true"
           type="text"
           maxLength={300}
           value={form.descripcion}
           onChange={(e) => updateField('descripcion', e.target.value)}
           placeholder="Ej: Paramédicos con equipo propio / Raciones de comida caliente"
         />
-        {fieldErrors.descripcion && <span className="field-error">{fieldErrors.descripcion}</span>}
+        {fieldErrors.descripcion && <span className="field-error" id="descripcionLote-error">{fieldErrors.descripcion}</span>}
       </div>
 
       <div className="form-actions">

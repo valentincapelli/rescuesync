@@ -109,6 +109,17 @@ function App() {
     };
   }, [user]);
 
+  // El título de la pestaña indica la pantalla actual: es lo primero que lee un lector de pantalla al cambiar de sección.
+  useEffect(() => {
+    if (!user) {
+      document.title = 'Iniciar sesión · RescueSync';
+      return;
+    }
+    const actual = seccion ?? getSeccionInicial(user.rol);
+    const etiqueta = SECCIONES.find((s) => s.id === actual)?.label;
+    document.title = etiqueta ? `${etiqueta} · RescueSync` : 'RescueSync';
+  }, [user, seccion]);
+
   if (loading) {
     return <p>Cargando sesión...</p>;
   }
