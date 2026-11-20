@@ -5,7 +5,12 @@ import type {
   Oferta,
   OfertaPropia,
   SeleccionarOfertasResponse,
+  VersionOferta,
 } from '../types/oferta';
+
+export function listarVersionesOferta(loteId: number, ofertaId: number): Promise<VersionOferta[]> {
+  return apiGet<VersionOferta[]>(`/lotes/${loteId}/ofertas/${ofertaId}/versiones`);
+}
 
 export function crearOferta(loteId: number, request: CrearOfertaRequest): Promise<Oferta> {
   return apiPost<Oferta>(`/lotes/${loteId}/ofertas`, request);

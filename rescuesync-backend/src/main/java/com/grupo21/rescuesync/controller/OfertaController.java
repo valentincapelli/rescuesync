@@ -7,6 +7,7 @@ import com.grupo21.rescuesync.dto.ofertas.OfertaPropiaResponse;
 import com.grupo21.rescuesync.dto.ofertas.OfertasEvaluadasEmergenciaResponse;
 import com.grupo21.rescuesync.dto.ofertas.SeleccionarOfertasRequest;
 import com.grupo21.rescuesync.dto.ofertas.SeleccionarOfertasResponse;
+import com.grupo21.rescuesync.dto.ofertas.VersionOfertaResponse;
 import com.grupo21.rescuesync.service.OfertaService;
 import com.grupo21.rescuesync.service.ValidacionOfertasService;
 
@@ -69,6 +70,17 @@ public class OfertaController {
         OfertaResponse response = ofertaService.editar(loteId, ofertaId, request, userDetails.getUsername());
 
         return ResponseEntity.ok(response);
+    }
+
+    /** Historial de versiones: alta y cada edición con fecha, autor y valores anteriores. */
+    @PreAuthorize("hasAuthority('CONSULTAR_OFERTAS')")
+    @GetMapping("/lotes/{loteId}/ofertas/{ofertaId}/versiones")
+    public List<VersionOfertaResponse> listarVersiones(
+            @PathVariable Long loteId,
+            @PathVariable Long ofertaId,
+            @AuthenticationPrincipal UserDetails userDetails
+    ) {
+        return ofertaService.listarVersiones(loteId, ofertaId, userDetails.getUsername());
     }
 
     @PreAuthorize("hasAuthority('CONSULTAR_OFERTAS_VALIDADAS_MUNICIPIO')")

@@ -4,6 +4,7 @@ import { editarOferta, listarOfertasPropias } from '../api/ofertas';
 import { TIPO_RECURSO_LABELS } from '../types/lote';
 import { ESTADO_OFERTA_LABELS, type CrearOfertaRequest, type OfertaPropia } from '../types/oferta';
 import { OfertaForm } from './OfertaForm';
+import { VersionesOferta } from './VersionesOferta';
 
 export function OfertasPropias({ recarga }: { recarga: number }) {
   const [ofertas, setOfertas] = useState<OfertaPropia[]>([]);
@@ -13,6 +14,16 @@ export function OfertasPropias({ recarga }: { recarga: number }) {
   const [error, setError] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
   const [version, setVersion] = useState(0);
+  // Ofertas con el historial de versiones desplegado.
+  const [conHistorial, setConHistorial] = useState<Set<number>>(new Set());
+
+  function alternarHistorial(id: number) {
+    setConHistorial((actual) => {
+      const siguiente = new Set(actual);
+      if (siguiente.has(id)) siguiente.delete(id); else siguiente.add(id);
+      return siguiente;
+    });
+  }
 
   useEffect(() => {
     let cancelado = false;
@@ -69,6 +80,14 @@ export function OfertasPropias({ recarga }: { recarga: number }) {
                   <button type="button" className="secondary" disabled={guardando}
                     onClick={() => { setEditando(propia); setAviso(null); }}>Editar oferta #{propia.oferta.id}</button>
                 ) : <p className="muted">Esta oferta ya no admite cambios.</p>}
+                <button type="button" className="secondary" aria-expanded={conHistorial.has(propia.oferta.id)}
+                  onClick={() => alternarHistorial(propia.oferta.id)}>
+                  {conHistorial.has(propia.oferta.id) ? 'Ocultar historial' : 'Ver historial de versiones'}
+                </button>
+                {conHistorial.has(propia.oferta.id) && (
+                  <VersionesOferta loteId={propia.lote.id} ofertaId={propia.oferta.id}
+                    unidad={propia.lote.unidadMedida} recarga={version} />
+                )}
               </article>
             ))}
           </div>

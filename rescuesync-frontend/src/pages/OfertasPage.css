@@ -23,6 +23,15 @@
   gap: 0.75rem;
 }
 
+.versiones-oferta {
+  margin: 0.5rem 0 0;
+  padding-left: 1.25rem;
+  display: grid;
+  gap: 0.4rem;
+  font-size: 0.9rem;
+  overflow-wrap: anywhere;
+}
+
 @media (max-width: 600px) {
   .ofertas-page .emergencia-picker {
     flex-direction: column;
