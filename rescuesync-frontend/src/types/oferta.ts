@@ -46,6 +46,17 @@ export interface OfertaPropia {
   editable: boolean;
 }
 
+// Espeja VersionOfertaResponse. La versión 1 es el alta (autorEmail y valores anteriores en null).
+export interface VersionOferta {
+  numero: number;
+  fecha: string;
+  autorEmail: string | null;
+  cantidadOfrecida: number;
+  observaciones: string | null;
+  cantidadAnterior: number | null;
+  observacionesAnteriores: string | null;
+}
+
 // Espeja ClasificacionOferta: cómo se adapta la oferta según el perfil del Sistema Nacional.
 export type ClasificacionOferta = 'PRINCIPAL' | 'APOYO' | 'SIN_HABILITACION';
 

@@ -26,6 +26,11 @@ public interface OfertaRepository extends JpaRepository<Oferta, Long> {
 
     List<Oferta> findByOngIdAndLoteId(Long OngId, Long loteId);
 
+    /** Para editar: dos ediciones simultáneas no pueden registrar el mismo valor anterior. */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select o from Oferta o where o.id = :id")
+    java.util.Optional<Oferta> buscarConBloqueo(@Param("id") Long id);
+
     List<Oferta> findByLote_Emergencia_Municipio_IdAndEstado(
             Long municipioId,
             EstadoOferta estado

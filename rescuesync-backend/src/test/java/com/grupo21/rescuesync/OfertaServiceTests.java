@@ -72,7 +72,8 @@ class OfertaServiceTests {
                 notificacionService,
                 mock(HistorialEstadoService.class),
                 intenciones,
-                eventos
+                eventos,
+                mock(com.grupo21.rescuesync.repository.RevisionOfertaRepository.class)
         );
     }
 

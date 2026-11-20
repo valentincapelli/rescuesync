@@ -27,8 +27,13 @@ import com.grupo21.rescuesync.repository.LoteRepository;
 import com.grupo21.rescuesync.repository.OfertaRepository;
 import com.grupo21.rescuesync.repository.IntencionSeleccionBonitaRepository;
 import com.grupo21.rescuesync.repository.UsuarioRepository;
+import com.grupo21.rescuesync.repository.RevisionOfertaRepository;
+import com.grupo21.rescuesync.model.RevisionOferta;
+import com.grupo21.rescuesync.dto.ofertas.VersionOfertaResponse;
 
 import lombok.RequiredArgsConstructor;
+
+import java.util.Objects;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -57,6 +62,7 @@ public class OfertaService {
     private final HistorialEstadoService historialEstadoService;
     private final IntencionSeleccionBonitaRepository intenciones;
     private final ApplicationEventPublisher eventos;
+    private final RevisionOfertaRepository revisiones;
 
     /** Principal antes que apoyo; las evaluadas sin perfil (datos de demo) al final. */
     /**
@@ -143,13 +149,13 @@ public class OfertaService {
                 String emailUsuario
         ) {
 
-        Oferta oferta = ofertaRepository.findById(ofertaId)
+        Oferta oferta = ofertaRepository.buscarConBloqueo(ofertaId)
                 .orElseThrow(() ->
                         new ResourceNotFoundException(
                                 "Oferta con id " + ofertaId + " no encontrada"
                         )
                 );
-        
+
         if (!oferta.getLote().getId().equals(loteId)) {
             throw new ResourceNotFoundException("Oferta", ofertaId);
         }
@@ -181,6 +187,22 @@ public class OfertaService {
             throw new BusinessException("Solo se pueden editar ofertas pendientes de evaluación");
         }
 
+        boolean sinCambios = oferta.getCantidadOfrecida().equals(request.cantidadOfrecida())
+                && Objects.equals(sinBlancos(oferta.getObservaciones()), sinBlancos(request.observaciones()));
+        if (sinCambios) {
+            return toResponse(oferta);
+        }
+
+        // Trazabilidad: se guarda qué había antes de pisar los valores.
+        RevisionOferta revision = new RevisionOferta();
+        revision.setOferta(oferta);
+        revision.setAutor(usuario);
+        revision.setCantidadAnterior(oferta.getCantidadOfrecida());
+        revision.setObservacionesAnteriores(oferta.getObservaciones());
+        revision.setCantidadNueva(request.cantidadOfrecida());
+        revision.setObservacionesNuevas(request.observaciones());
+        revisiones.save(revision);
+
         oferta.setCantidadOfrecida(request.cantidadOfrecida());
         oferta.setObservaciones(request.observaciones());
 
@@ -188,6 +210,41 @@ public class OfertaService {
 
         return toResponse(actualizada);
         }
+
+    /**
+     * Historial de versiones de una oferta, de la más vieja a la más nueva. La ONG solo ve las suyas;
+     * el Centro Coordinador (sin ONG) puede ver las de cualquier ONG.
+     */
+    @Transactional(readOnly = true)
+    public List<VersionOfertaResponse> listarVersiones(Long loteId, Long ofertaId, String emailUsuario) {
+        Oferta oferta = ofertaRepository.findById(ofertaId)
+                .filter(o -> o.getLote().getId().equals(loteId))
+                .orElseThrow(() -> new ResourceNotFoundException("Oferta", ofertaId));
+        Usuario usuario = usuarioRepository.findByEmail(emailUsuario)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado"));
+        if (usuario.getOng() != null && !usuario.getOng().getId().equals(oferta.getOng().getId())) {
+            throw new BusinessException("La ONG no tiene permiso para ver esta oferta");
+        }
+
+        List<RevisionOferta> ediciones = revisiones.findByOfertaIdOrderByIdAsc(ofertaId);
+        List<VersionOfertaResponse> versiones = new ArrayList<>();
+        // Versión 1 = alta. Sus valores son los "anteriores" de la primera edición, o los actuales si nunca se editó.
+        RevisionOferta primera = ediciones.isEmpty() ? null : ediciones.get(0);
+        versiones.add(new VersionOfertaResponse(1, oferta.getCreatedAt(), null,
+                primera == null ? oferta.getCantidadOfrecida() : primera.getCantidadAnterior(),
+                primera == null ? oferta.getObservaciones() : primera.getObservacionesAnteriores(),
+                null, null));
+        for (RevisionOferta edicion : ediciones) {
+            versiones.add(new VersionOfertaResponse(versiones.size() + 1, edicion.getCreatedAt(),
+                    edicion.getAutor().getEmail(), edicion.getCantidadNueva(), edicion.getObservacionesNuevas(),
+                    edicion.getCantidadAnterior(), edicion.getObservacionesAnteriores()));
+        }
+        return versiones;
+    }
+
+    private static String sinBlancos(String texto) {
+        return texto == null || texto.isBlank() ? null : texto.trim();
+    }
 
     @Transactional(readOnly = true)
     public List<OfertaPropiaResponse> listarPropias(String email) {
