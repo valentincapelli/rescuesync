@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definition:ConnectorDefinition xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:definition="http://www.bonitasoft.org/ns/connector/definition/6.1">
+    <id>${connector-definition-id}</id>
+    <version>${connector-definition-version}</version>
+    <icon>connector.png</icon>
+    <category icon="connector.png" id="Custom"/>
+
+    <input mandatory="true" name="operacion" type="java.lang.String"/>
+    <input mandatory="true" name="sistemaNacionalBaseUrl" type="java.lang.String"/>
+    <input mandatory="true" name="emergenciaId" type="java.lang.Long"/>
+    <input mandatory="true" name="ofertasJson" type="java.lang.String"/>
+    <input mandatory="false" name="ofertaSeleccionadaId" type="java.lang.Long"/>
+    <input mandatory="false" name="ofertasProcesadasJson" type="java.lang.String" defaultValue="[]"/>
+
+    <output name="resultadoJson" type="java.lang.String"/>
+    <output name="ofertasProcesadasJson" type="java.lang.String"/>
+    <output name="hayOfertasPendientes" type="java.lang.Boolean"/>
+
+    <page id="defaultPage">
+        <widget xsi:type="definition:Text" id="operacionWidget" inputName="operacion"/>
+        <widget xsi:type="definition:Text" id="sistemaNacionalBaseUrlWidget" inputName="sistemaNacionalBaseUrl"/>
+        <widget xsi:type="definition:Text" id="emergenciaIdWidget" inputName="emergenciaId"/>
+        <widget xsi:type="definition:Text" id="ofertasJsonWidget" inputName="ofertasJson"/>
+        <widget xsi:type="definition:Text" id="ofertaSeleccionadaIdWidget" inputName="ofertaSeleccionadaId"/>
+        <widget xsi:type="definition:Text" id="ofertasProcesadasJsonWidget" inputName="ofertasProcesadasJson"/>
+    </page>
+</definition:ConnectorDefinition>

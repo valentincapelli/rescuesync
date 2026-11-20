@@ -1,0 +1,63 @@
+spring:
+  application:
+    name: rescuesync-sistema-nacional
+
+  datasource:
+    # Render no da una URL JDBC: da host, puerto, base, usuario y clave por separado, y la URL se arma acá.
+    # DB_URL, si está, pisa todo lo anterior. sslmode=prefer usa SSL si el servidor lo ofrece.
+    url: ${DB_URL:jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5434}/${DB_NAME:sistema_nacional}?sslmode=${DB_SSLMODE:prefer}}
+    username: ${DB_USER:sistema_nacional}
+    password: ${DB_PASSWORD:sistema_nacional}
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      # update mientras armamos el modelo (E3-02). Pasar a "validate" + migraciones cuando se estabilice.
+      ddl-auto: ${JPA_DDL_AUTO:update}
+    properties:
+      hibernate:
+        format_sql: true
+        jdbc:
+          time_zone: UTC
+    show-sql: ${JPA_SHOW_SQL:false}
+
+  jackson:
+    time-zone: America/Argentina/Buenos_Aires
+    deserialization:
+      # Los enums se reciben por nombre; un número no debe interpretarse como su posición.
+      fail-on-numbers-for-enums: true
+
+server:
+  # 8080 = Bonita, 8081 = backend de RescueSync, 8082 = Sistema Nacional.
+  # Render inyecta PORT; si está definido se usa ese.
+  port: ${SERVER_PORT:${PORT:8082}}
+  # Render termina el HTTPS en su proxy y reenvía por HTTP con X-Forwarded-*. Sin esto Swagger
+  # arma las URLs con http:// y el navegador bloquea las llamadas desde la página https.
+  forward-headers-strategy: framework
+
+app:
+  version: '@project.version@'
+  auth:
+    # true en Render (HTTPS). En local queda false: con Secure el navegador no guarda la cookie por http.
+    cookie-secure: ${COOKIE_SECURE:false}
+  cors:
+    allowed-origins: ${CORS_ORIGINS:http://localhost:5173}
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    # Los métodos de cada grupo en el orden del controller (el orden de los grupos lo fija OpenApiConfig).
+    operations-sorter: method
+    display-request-duration: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+jwt:
+  # El default es SOLO para desarrollo local. En producción JWT_SECRET es obligatorio
+  # (en Render lo genera el Blueprint). Mínimo 32 caracteres (HS256).
+  secret: ${JWT_SECRET:yJnBNfTcXCeJ5g614Xj11TQlC47tmjHDKDh67o6nlY3}
+  expiration: ${JWT_EXPIRATION:86400000}

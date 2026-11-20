@@ -42,7 +42,7 @@ class RescueSyncApplicationTests {
 
     @Test
     void rutaInexistenteDevuelve404() throws Exception {
-        mockMvc.perform(get("/api/no-existe"))
+        mockMvc.perform(get("/api/info/no-existe"))
                 .andExpect(status().isNotFound());
     }
 }

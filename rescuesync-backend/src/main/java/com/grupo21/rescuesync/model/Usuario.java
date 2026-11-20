@@ -1,5 +1,8 @@
 package com.grupo21.rescuesync.model;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -7,6 +10,7 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -38,4 +42,7 @@ public class Usuario extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "municipio_id")
     private Municipio municipio;
+
+    @OneToMany(mappedBy = "usuario")
+    private List<NotificacionUsuario> notificaciones = new ArrayList<>();
 }

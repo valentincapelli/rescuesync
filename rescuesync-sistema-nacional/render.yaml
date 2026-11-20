@@ -1,0 +1,61 @@
+# Blueprint de Render para la API del Sistema Nacional (E3-12).
+#
+# Este archivo NO está en la raíz del repo: al crear el Blueprint (New > Blueprint) hay que poner
+# Blueprint Path = rescuesync-sistema-nacional/render.yaml. Ver "Despliegue en Render" en el README.
+#
+# Ojo: en un Blueprint las rutas (dockerfilePath, dockerContext, buildFilter) son SIEMPRE relativas
+# a la raíz del repo, no a esta carpeta.
+services:
+  - type: web
+    name: rescuesync-sistema-nacional
+    runtime: docker
+    plan: free
+    region: virginia
+    dockerfilePath: ./rescuesync-sistema-nacional/Dockerfile
+    dockerContext: ./rescuesync-sistema-nacional
+    healthCheckPath: /actuator/health
+    # Monorepo: solo redesplegar si cambia esta carpeta (no el backend ni el frontend).
+    buildFilter:
+      paths:
+        - rescuesync-sistema-nacional/**
+    envVars:
+      # Conexión a la base: Render da los datos sueltos y application.yml arma la URL JDBC.
+      - key: DB_HOST
+        fromDatabase:
+          name: sistema-nacional-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: sistema-nacional-db
+          property: port
+      - key: DB_NAME
+        fromDatabase:
+          name: sistema-nacional-db
+          property: database
+      - key: DB_USER
+        fromDatabase:
+          name: sistema-nacional-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: sistema-nacional-db
+          property: password
+      # Secreto generado por Render: nunca el default de application.yml.
+      - key: JWT_SECRET
+        generateValue: true
+      - key: COOKIE_SECURE
+        value: "true"
+      # Sin migraciones todavía: Hibernate crea/actualiza el esquema (deuda, ver README).
+      - key: JPA_DDL_AUTO
+        value: update
+      # Solo hace falta si un frontend llama a la API desde el navegador. Render lo pide al crear el Blueprint.
+      - key: CORS_ORIGINS
+        sync: false
+
+databases:
+  - name: sistema-nacional-db
+    plan: free
+    region: virginia
+    postgresMajorVersion: "16"
+    databaseName: sistema_nacional
+    user: sistema_nacional

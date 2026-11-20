@@ -26,6 +26,8 @@ App web de RescueSync (DSSD 2026 – Grupo 21).
    (todavía no hay login, eso llega con E2-10):
 
    - **Municipio · Registrar emergencia**: formulario de alta de emergencia (E2-05).
+   - **Municipio · Seleccionar ofertas**: revisión por emergencia y lote de ofertas
+     validadas, con selección de las que se aceptan.
    - **Centro Coordinador · Lotes**: desglose de una emergencia en lotes y
      publicación de la convocatoria (E2-07, ver abajo).
    - **ONG · Ofertas**: carga básica de ofertas sobre lotes publicados (E2-09).
@@ -84,6 +86,34 @@ se limpia el formulario anterior y se ignoran respuestas de consultas anteriores
 Este formulario cubre el alta básica: la edición con trazabilidad, los consorcios
 y el control temporal mediante Bonita corresponden a etapas posteriores. La ONG
 sigue identificándose por nombre, como establece el backend actual.
+
+## Selección municipal de ofertas
+
+La pestaña **Municipio · Seleccionar ofertas** usa `GET /api/ofertas/evaluadas`,
+que devuelve las emergencias del municipio en `COBERTURA_EVALUADA` o
+`COBERTURA_PARCIAL`, agrupadas por lote y con sus ofertas evaluadas. Se puede
+seleccionar más de una oferta entre los lotes de una emergencia. Al confirmar,
+`PUT /api/ofertas/seleccion` acepta las seleccionadas y rechaza las restantes
+ofertas evaluadas de esa emergencia.
+
+## Dashboard de indicadores
+
+La pestaña **Dirección · Indicadores** (rol `DIRECTIVO`, usuario demo `direccion@test.com`)
+muestra los indicadores de E4 (`/api/indicadores/*`, contrato en
+`../docs/e4-indicadores-contrato.md`). Para verla con datos reales, cargar
+`scripts/seed-indicadores-demo.sql` (ver el README del backend). Sin backend con datos, se
+puede usar con datos simulados:
+
+```bash
+VITE_INDICADORES_MOCK=true npm run dev
+```
+
+(o `VITE_INDICADORES_MOCK=true` en `.env`). Con esa variable, los datos salen de
+`src/mocks/indicadores.ts` en vez de la API; el login sigue necesitando el backend. En modo
+simulado, el filtro **Municipio** trae al final dos opciones especiales: "(prueba) Bonita no
+disponible" y "(prueba) Error en consorcios", para ver esos estados de la pantalla. Con el backend
+real, la lista sale de `GET /api/municipios`. La exportación simulada genera
+JSON y un CSV reducido; Excel solo se genera con el backend.
 
 ## Configuración
 

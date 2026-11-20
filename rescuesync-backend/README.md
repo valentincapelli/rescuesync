@@ -47,7 +47,53 @@ Backend de la aplicación web de RescueSync (DSSD 2026 – Grupo 21).
 Todo está en `src/main/resources/application.yml` y se puede pisar con variables de entorno (ver `.env.example`):
 `DB_URL`, `DB_USER`, `DB_PASSWORD`, `SERVER_PORT`, `CORS_ORIGINS`, `BONITA_URL`, `BONITA_USER`, `BONITA_PASSWORD`, `BONITA_PROCESS`, `JPA_DDL_AUTO`, `JPA_SHOW_SQL`.
 
+### Cuenta técnica de Bonita para consultar ofertas consolidadas
+
+Configurar `RESCUESYNC_BONITA_SERVICE_EMAIL` (una dirección de email exclusiva) y
+`RESCUESYNC_BONITA_SERVICE_PASSWORD` en el entorno del backend antes de iniciarlo.
+Las dos variables son opcionales en conjunto; si se configura solo una, el backend
+no inicia. Al iniciar, crea la cuenta `SERVICIO_BONITA` sin Municipio ni ONG, o
+actualiza su hash BCrypt si cambió la contraseña. Nunca convierte una cuenta de
+otro rol en cuenta técnica. No guardar la contraseña en el repositorio.
+
+Bonita debe usar el login existente `POST /api/auth/login` con esas credenciales y
+reenviar la cookie `access_token` al consultar
+`GET /api/emergencias/{emergenciaId}/ofertas-consolidadas`. La cuenta técnica solo
+tiene permiso para esa consulta; no se usa `BONITA_USER`/`BONITA_PASSWORD`, que
+autentican al backend ante Bonita en el sentido inverso.
+
+#### Actualización de la restricción de roles en PostgreSQL
+
+La base existente puede tener `usuarios_rol_check` con solo los tres roles
+anteriores. `ddl-auto=update` no amplía esa restricción al agregar
+`SERVICIO_BONITA`. En una base PostgreSQL ya creada, antes de iniciar el backend
+con las credenciales técnicas, aplicar el script desde la raíz del repositorio usando una
+cuenta de base de datos con permiso para alterar `usuarios`:
+
+```bash
+psql -h localhost -p 5433 -U rescuesync -d rescuesync \
+  -v ON_ERROR_STOP=1 \
+  -f scripts/usuarios_servicio_bonita.sql
+```
+
+`psql` solicitará la contraseña si no está configurada mediante el entorno.
+El script conserva los roles anteriores, agrega `SERVICIO_BONITA` y valida la
+nueva restricción sin eliminar usuarios. Se puede volver a ejecutar. Cambiar
+el nombre del archivo no altera las bases existentes: el script debe ejecutarse
+en cada una de ellas. Para otra base, ajustar los parámetros de conexión de `psql`.
+
 ## Estructura (por capas)
+
+### CUIT para la integración nacional (E3-10)
+
+Las ofertas consolidadas incluyen ahora `ong.cuit` (11 dígitos, sin guiones).
+En bases existentes, ejecutar `scripts/ongs_cuit.sql` sobre **RescueSync** y
+completar el CUIT verificado de las ONGs que liste. El campo admite `null` para
+conservar los registros anteriores, pero Bonita lo requiere al evaluar ofertas.
+El script y el seed completan las dos ONGs de demostración que coinciden con el
+Sistema Nacional. Ver la [guía E3-10](../docs/e3-10-sistema-nacional.md).
+
+### Paquetes
 
 ```
 src/main/java/com/grupo21/rescuesync/
@@ -188,6 +234,72 @@ aserciones se van a romper. Es un efecto secundario esperado del diseño actual,
 no un bug — si molesta, se soluciona mockeando `BonitaClient` en el test (o con un
 profile de test que apunte `BONITA_URL` a una URL inexistente).
 
+## Dashboard de indicadores (E4)
+
+Endpoints `GET /api/indicadores/*` para el personal directivo: rol `DIRECTIVO`, permiso
+`CONSULTAR_INDICADORES`, usuario demo `direccion@test.com` / `123456`. La fórmula exacta de
+cada indicador y las decisiones de diseño están en
+[`docs/e4-indicadores-contrato.md`](../docs/e4-indicadores-contrato.md).
+
+| Ruta | Qué devuelve | Fuente |
+|---|---|---|
+| `/resumen` | KPIs principales | propios + Bonita |
+| `/suministros` | Suministros movilizados por mes, tipo de recurso y unidad | propios |
+| `/consorcios` | % de lotes resueltos por consorcios de 2+ ONGs | propios |
+| `/proyectos` | Emergencias por estado, cobertura y fecha de cierre | propios |
+| `/tiempos-etapas` | Tiempo promedio, mediana, mínimo y máximo por etapa | API de Bonita |
+| `/reporte?formato=json\|csv\|xlsx` | Todo junto, como JSON o como archivo descargable | todo |
+
+Filtros opcionales en todos: `desde` y `hasta` (`yyyy-MM-dd`, por defecto los últimos 12 meses),
+`municipioId`, `tipoDesastre` y `tipoRecurso` (este último solo afecta suministros y consorcios).
+
+```bash
+# Con la cookie de sesión de direccion@test.com (POST /api/auth/login)
+curl -b cookies.txt "http://localhost:8081/api/indicadores/resumen?desde=2026-06-01"
+curl -b cookies.txt -OJ "http://localhost:8081/api/indicadores/reporte?formato=xlsx"
+```
+
+**Exportación.** El CSV está pensado para Excel en configuración regional de Argentina:
+separador `;`, coma decimal, UTF-8 con BOM, una sección por bloque. El XLSX trae una hoja por
+bloque. Para procesar los datos con un programa, usar `formato=json`.
+
+**Historial de estados.** Los indicadores dependen de `historial_estados`, que registra cada
+cambio de estado de emergencias, lotes y ofertas. Regla para todo código nuevo: no llamar a
+`setEstado(...)` en esas entidades; usar `HistorialEstadoService.cambiarEstado(...)` (o
+`registrarAlta(...)` al crearlas).
+
+**Bonita.** Si Bonita no responde, el dashboard responde igual con `bonita.disponible = false` y
+los tiempos por etapa vacíos. Configuración:
+
+| Variable | Default | Para qué |
+|---|---|---|
+| `BONITA_CONNECT_TIMEOUT` / `BONITA_READ_TIMEOUT` | `5s` / `15s` | Timeouts de todas las llamadas a Bonita |
+| `BONITA_INDICADORES_CACHE_TTL` | `5m` | Caché de tiempos de los casos en curso |
+| `BONITA_INDICADORES_CACHE_TTL_ARCHIVADOS` | `12h` | Caché de los casos terminados (no cambian) |
+
+**Datos de demo.** Con la base ya creada y `scripts/seed-backend-demo.sql` cargado:
+
+```bash
+psql -h localhost -p 5433 -U rescuesync -d rescuesync -v ON_ERROR_STOP=1 \
+  -f scripts/seed-indicadores-demo.sql
+```
+
+Carga 10 emergencias en los últimos ~6 meses, con su historial. Se puede volver a ejecutar. No
+trae casos de Bonita: los tiempos por etapa se ven creando emergencias desde la app con Bonita
+levantado. En una base creada antes de E4, aplicar primero `scripts/usuarios_rol_directivo.sql`
+para que se acepte el rol `DIRECTIVO`.
+
+**Verificado contra Bonita 10.4 (18/11/2026):** los tiempos por etapa se calculan con
+`GET /API/bpm/archivedFlowNode`, que trae un registro por cada cambio de estado de una tarea.
+`archivedActivity` no sirve: trae solo el estado final. El caso terminado
+(`archivedCase?f=sourceObjectId=`, con `start` y `end_date`) se verificó en la prueba de E3-10
+([`docs/e3-10-prueba-integracion.md`](../docs/e3-10-prueba-integracion.md)). Detalle en el Javadoc de
+`TiemposBonitaService`.
+
+**Cliente HTTP de Bonita:** no usar `SimpleClientHttpRequestFactory`. Con él, un POST sin cuerpo
+sale con `Content-Type: application/x-www-form-urlencoded` y Bonita responde 415 al ejecutar una
+tarea. Lo cubre `BonitaRestClientConfigTests`.
+
 ## Próximas tareas que se apoyan en esta base
 
 - **E2-04** ✅ Alta de emergencias: `POST /api/emergencias` (+ `GET /api/emergencias`, `GET /api/emergencias/{id}`) en `EmergenciaController` / `EmergenciaService`, usados por el formulario del frontend.
@@ -196,3 +308,20 @@ profile de test que apunte `BONITA_URL` a una URL inexistente).
 - **E2-10** ✅ Autenticación e integración inicial con Bonita: ver sección arriba (`GET /api/bonita/estado`).
 - **E2-11** ✅ Instanciar el proceso al crear una emergencia: ver sección arriba.
 - **E2-12** ⚠️ Parcial: la llamada ya manda el body de instanciación, pero sin entradas — falta definir el Contrato en Bonita Studio para mandar variables iniciales reales (ver sección arriba).
+# Recuperación de selecciones Bonita (E4-05)
+
+La adjudicación registra una intención por oferta seleccionada. La recuperación periódica
+consulta como máximo 20 emergencias por pasada, cada 30 segundos, y reusa el mismo `taskId`
+cuando una respuesta de Bonita es incierta. Los incidentes permanentes no se reintentan.
+El coordinador espera 30 segundos antes de reintentar el mismo `taskId` y limita la
+ejecución a tres intentos; al agotarlos, conserva la intención como `INCIDENTE`.
+
+- `BONITA_SELECCION_RECOVERY_ENABLED` (predeterminado `true`): habilita la recuperación.
+- `BONITA_SELECCION_RECOVERY_INTERVAL_MS` (predeterminado `30000`): intervalo en milisegundos.
+- `BONITA_SELECCION_RECOVERY_MAX_CASES` (predeterminado `20`): máximo de emergencias por pasada.
+
+La confirmación de liberación reutiliza la sincronización E4-06. Para que esa confirmación
+avance automáticamente, habilitar también `BONITA_DESPLIEGUES_SYNC_ENABLED=true`.
+Antes de desplegar con `JPA_DDL_AUTO=validate`, aplicar en la base de RescueSync
+`scripts/intenciones_seleccion_bonita_e4_05.sql`. Este script no fue ejecutado durante la tarea.
+El Centro Coordinador consulta los estados en `GET /api/emergencias/{id}/selecciones`.

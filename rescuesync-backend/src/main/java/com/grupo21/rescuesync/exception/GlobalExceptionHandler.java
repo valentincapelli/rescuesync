@@ -39,6 +39,11 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.CONFLICT, ex.getMessage(), req);
     }
 
+    @ExceptionHandler(ParametroInvalidoException.class)
+    public ResponseEntity<ApiError> handleParametroInvalido(ParametroInvalidoException ex, HttpServletRequest req) {
+        return build(HttpStatus.BAD_REQUEST, ex.getMessage(), req);
+    }
+
     @ExceptionHandler(BonitaIntegrationException.class)
     public ResponseEntity<ApiError> handleBonita(BonitaIntegrationException ex, HttpServletRequest req) {
         log.error("Error de integración con Bonita", ex);
