@@ -45,6 +45,7 @@ const SECCIONES = [
     label: 'ONG · Notificaciones',
     rol: 'REPRESENTANTE_ONG',
   },
+  {
     id: 'despliegues',
     label: 'Centro Coordinador · Despliegues',
     rol: 'CENTRO_COORDINADOR',
