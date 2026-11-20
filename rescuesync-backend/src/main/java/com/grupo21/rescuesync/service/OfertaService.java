@@ -2,6 +2,7 @@ package com.grupo21.rescuesync.service;
 
 import com.grupo21.rescuesync.dto.ofertas.CrearOfertaRequest;
 import com.grupo21.rescuesync.dto.ofertas.EditarOfertaRequest;
+import com.grupo21.rescuesync.dto.ofertas.OfertaEvaluadaResponse;
 import com.grupo21.rescuesync.dto.ofertas.OfertaResponse;
 import com.grupo21.rescuesync.dto.ofertas.OfertasEvaluadasEmergenciaResponse;
 import com.grupo21.rescuesync.dto.ofertas.OfertasEvaluadasEmergenciaResponse.LoteEvaluado;
@@ -27,6 +28,7 @@ import lombok.RequiredArgsConstructor;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
@@ -48,6 +50,12 @@ public class OfertaService {
     private final EmergenciaRepository emergenciaRepository;
     private final NotificacionService notificacionService;
     private final HistorialEstadoService historialEstadoService;
+
+    /** Principal antes que apoyo; las evaluadas sin perfil (datos de demo) al final. */
+    private static final Comparator<OfertaEvaluadaResponse> PRINCIPALES_PRIMERO = Comparator
+            .comparing((OfertaEvaluadaResponse oferta) ->
+                    oferta.validacion() == null ? Integer.MAX_VALUE : oferta.validacion().clasificacion().ordinal())
+            .thenComparing(OfertaEvaluadaResponse::id);
 
     @Transactional
     public OfertaResponse crear(
@@ -194,7 +202,7 @@ public class OfertaService {
 
         Map<Long, Emergencia> emergencias = new TreeMap<>();
         Map<Long, Map<Long, Lote>> lotesPorEmergencia = new TreeMap<>();
-        Map<Long, Map<Long, List<OfertaResponse>>> ofertasPorEmergencia = new TreeMap<>();
+        Map<Long, Map<Long, List<OfertaEvaluadaResponse>>> ofertasPorEmergencia = new TreeMap<>();
 
         for (Oferta oferta : ofertas) {
             Emergencia emergencia = oferta.getLote().getEmergencia();
@@ -212,7 +220,7 @@ public class OfertaService {
             ofertasPorEmergencia
                     .computeIfAbsent(emergenciaId, id -> new TreeMap<>())
                     .computeIfAbsent(loteId, id -> new ArrayList<>())
-                    .add(toResponse(oferta));
+                    .add(OfertaEvaluadaResponse.de(oferta));
         }
 
         return emergencias.entrySet().stream()
@@ -224,6 +232,8 @@ public class OfertaService {
                             .stream()
                             .map(loteEntry -> {
                                 Lote lote = loteEntry.getValue();
+                                List<OfertaEvaluadaResponse> delLote =
+                                        ofertasPorEmergencia.get(emergenciaId).get(lote.getId());
                                 return new LoteEvaluado(
                                         lote.getId(),
                                         lote.getTipoRecurso(),
@@ -231,7 +241,13 @@ public class OfertaService {
                                         lote.getCantidadRequerida(),
                                         lote.getUnidadMedida(),
                                         lote.getEstado(),
-                                        ofertasPorEmergencia.get(emergenciaId).get(lote.getId())
+                                        delLote.stream()
+                                                .filter(OfertaEvaluadaResponse::seleccionable)
+                                                .sorted(PRINCIPALES_PRIMERO)
+                                                .toList(),
+                                        delLote.stream()
+                                                .filter(oferta -> !oferta.seleccionable())
+                                                .toList()
                                 );
                             })
                             .toList();
@@ -309,6 +325,18 @@ public class OfertaService {
         if (!idsEvaluados.containsAll(idsSeleccionados)) {
             throw new BusinessException(
                     "Una o más ofertas no pertenecen a esta emergencia o no están evaluadas"
+            );
+        }
+
+        // 5b. Solo se adjudican ofertas validadas: una sin habilitación nacional no se puede seleccionar
+        boolean seleccionaSinHabilitacion = ofertasEvaluadas.stream()
+                .filter(oferta -> idsSeleccionados.contains(oferta.getId()))
+                .anyMatch(oferta -> oferta.getValidacion() != null
+                        && oferta.getValidacion().getClasificacion() != null
+                        && !oferta.getValidacion().getClasificacion().esSeleccionable());
+        if (seleccionaSinHabilitacion) {
+            throw new BusinessException(
+                    "Una o más ofertas no tienen habilitación del Sistema Nacional para el tipo de recurso"
             );
         }
 

@@ -46,6 +46,29 @@
   margin: 0;
 }
 
+.perfil-nacional {
+  display: grid;
+  gap: 0.2rem;
+  justify-items: start;
+}
+
+.badge.clasificacion-principal { background: #dcfce7; color: #166534; }
+.badge.clasificacion-apoyo { background: #fef3c7; color: #92400e; }
+.badge.clasificacion-sin_habilitacion { background: #e5e7eb; color: #374151; }
+
+.sin-habilitacion {
+  margin-top: 0.6rem;
+}
+
+.sin-habilitacion summary {
+  cursor: pointer;
+}
+
+.sin-habilitacion ul {
+  margin: 0.4rem 0 0;
+  padding-left: 1.2rem;
+}
+
 @media (max-width: 600px) {
   .seleccion-ofertas-page .emergencia-picker,
   .confirmar-seleccion {

@@ -25,6 +25,9 @@ public record OfertasEvaluadasEmergenciaResponse(
             Integer cantidadRequerida,
             String unidadMedida,
             EstadoLote estado,
-            List<OfertaResponse> ofertas
+            /** Ofertas validadas (principal o apoyo), las que el municipio puede seleccionar. */
+            List<OfertaEvaluadaResponse> ofertas,
+            /** Evaluadas sin certificación vigente: se informan, pero no se pueden seleccionar. */
+            List<OfertaEvaluadaResponse> ofertasSinHabilitacion
     ) {}
 }

@@ -3,6 +3,7 @@ package com.grupo21.rescuesync.repository;
 import com.grupo21.rescuesync.dto.indicadores.CasoBonitaRef;
 import com.grupo21.rescuesync.model.Emergencia;
 import com.grupo21.rescuesync.model.EstadoEmergencia;
+import com.grupo21.rescuesync.model.EstadoOferta;
 import com.grupo21.rescuesync.model.TipoDesastre;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.Lock;
@@ -24,6 +25,16 @@ public interface EmergenciaRepository extends JpaRepository<Emergencia, Long> {
     List<Long> buscarIdsParaSeguimiento();
 
     List<Emergencia> findByEstado(EstadoEmergencia estado);
+
+    /** Emergencias del municipio con caso en Bonita, en alguno de los estados dados y con ofertas en ese estado. */
+    @Query("select distinct e.id from Emergencia e join Lote l on l.emergencia = e join Oferta o on o.lote = l "
+            + "where e.municipio.id = :municipioId and e.bonitaCaseId is not null "
+            + "and e.estado in :estados and o.estado = :estadoOferta order by e.id")
+    List<Long> buscarIdsConOfertasEnEstado(
+            @Param("municipioId") Long municipioId,
+            @Param("estados") List<EstadoEmergencia> estados,
+            @Param("estadoOferta") EstadoOferta estadoOferta
+    );
 
     List<Emergencia> findByMunicipioId(Long municipioId);
 

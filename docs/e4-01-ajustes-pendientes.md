@@ -129,7 +129,7 @@ Las estimaciones son un primer cálculo.
 | 5 | Monitorear despliegue: endpoint, estado `EN_EJECUCION` y pantalla | 5 h | E4-06 | |
 | 6 | Finalizar actividad: endpoint, `FINALIZADA`/`CERRADA` y pantalla | 5 h | E4-06 | |
 | 7 | Resolver cobertura incompleta: endpoint y pantalla (`REFORMULADO`) | 6 h | E4-02 | |
-| 8 | Reflejar en el backend los resultados de Evaluar, Comprometer y Liberar. *(prueba E3-10)* Confirmado: un caso terminado en Bonita deja la emergencia en `CONVOCATORIA_PUBLICADA` y la oferta en `PENDIENTE` | 4 h | E4-03 / E4-05 | |
+| 8 | Reflejar en el backend los resultados de Evaluar, Comprometer y Liberar. *(19/11)* **Evaluar hecho**: las ofertas pasan a `EVALUADA` con su perfil y clasificación principal/apoyo, ver [`e4-validacion-ofertas.md`](e4-validacion-ofertas.md). Faltan Comprometer y Liberar. *(prueba E3-10)* Confirmado: un caso terminado en Bonita deja la emergencia en `CONVOCATORIA_PUBLICADA` y la oferta en `PENDIENTE` | 4 h | E4-03 / E4-05 | |
 | 9 | Completar tareas de Bonita desde el backend después de "Publicar convocatoria" | 3 h | E4-04 / E4-06 | |
 | 10 | Timeout y warm-up del conector ante arranque en frío de Render | 2 h | E4-05 | |
 | 11 | CUIT obligatorio en ONGs y migración de datos | 2 h | E4-03 | |

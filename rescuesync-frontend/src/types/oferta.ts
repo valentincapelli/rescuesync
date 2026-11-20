@@ -38,6 +38,38 @@ export interface Oferta {
   estado: EstadoOferta;
 }
 
+// Espeja ClasificacionOferta: cómo se adapta la oferta según el perfil del Sistema Nacional.
+export type ClasificacionOferta = 'PRINCIPAL' | 'APOYO' | 'SIN_HABILITACION';
+
+export const CLASIFICACION_OFERTA_LABELS: Record<ClasificacionOferta, string> = {
+  PRINCIPAL: 'Principal',
+  APOYO: 'Apoyo secundario',
+  SIN_HABILITACION: 'Sin habilitación',
+};
+
+export type NivelCompetencia = 'BASICO' | 'INTERMEDIO' | 'AVANZADO';
+
+export const NIVEL_COMPETENCIA_LABELS: Record<NivelCompetencia, string> = {
+  BASICO: 'Básico',
+  INTERMEDIO: 'Intermedio',
+  AVANZADO: 'Avanzado',
+};
+
+// Espeja OfertaEvaluadaResponse.Validacion.
+export interface ValidacionOferta {
+  clasificacion: ClasificacionOferta;
+  nivelCompetencia: NivelCompetencia | null;
+  nivelRiesgoMax: NivelGravedad | null;
+  certificacionVence: string | null; // yyyy-MM-dd
+  observaciones: string | null;
+}
+
+// Espeja OfertaEvaluadaResponse.
+export interface OfertaEvaluada extends Oferta {
+  // Null solo en datos de demo marcados EVALUADA sin validación nacional.
+  validacion: ValidacionOferta | null;
+}
+
 export interface LoteConOfertasEvaluadas {
   id: number;
   tipoRecurso: TipoRecurso;
@@ -45,7 +77,10 @@ export interface LoteConOfertasEvaluadas {
   cantidadRequerida: number;
   unidadMedida: string;
   estado: EstadoLote;
-  ofertas: Oferta[];
+  // Validadas (principal o apoyo): las únicas que se pueden seleccionar.
+  ofertas: OfertaEvaluada[];
+  // Evaluadas sin certificación vigente: se informan, no se seleccionan.
+  ofertasSinHabilitacion: OfertaEvaluada[];
 }
 
 export interface EmergenciaConOfertasEvaluadas {

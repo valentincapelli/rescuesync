@@ -1,6 +1,7 @@
 package com.grupo21.rescuesync.model;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -52,4 +53,8 @@ public class Oferta extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "estado", nullable = false, length = 30)
     private EstadoOferta estado = EstadoOferta.PENDIENTE;
+
+    /** Perfil del Sistema Nacional y clasificación principal/apoyo. Null hasta que la oferta se evalúa. */
+    @Embedded
+    private ValidacionOferta validacion;
 }

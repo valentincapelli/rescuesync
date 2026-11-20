@@ -7,6 +7,7 @@ import com.grupo21.rescuesync.dto.ofertas.OfertasEvaluadasEmergenciaResponse;
 import com.grupo21.rescuesync.dto.ofertas.SeleccionarOfertasRequest;
 import com.grupo21.rescuesync.dto.ofertas.SeleccionarOfertasResponse;
 import com.grupo21.rescuesync.service.OfertaService;
+import com.grupo21.rescuesync.service.ValidacionOfertasService;
 
 import jakarta.validation.Valid;
 
@@ -33,6 +34,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class OfertaController {
 
     private final OfertaService ofertaService;
+    private final ValidacionOfertasService validacionOfertasService;
 
     @PreAuthorize("hasAuthority('CREAR_OFERTA')")
     @PostMapping("/lotes/{loteId}/ofertas")
@@ -66,6 +68,8 @@ public class OfertaController {
     public ResponseEntity<List<OfertasEvaluadasEmergenciaResponse>> obtenerOfertasEvaluadas(
             @AuthenticationPrincipal UserDetails userDetails
     ) {
+        // Trae de Bonita el resultado de "Evaluar ofertas" antes de listar (ofertas PENDIENTE -> EVALUADA).
+        validacionOfertasService.sincronizarMunicipioDelUsuario(userDetails.getUsername());
         List<OfertasEvaluadasEmergenciaResponse> ofertas =
                 ofertaService.obtenerOfertasEvaluadasDelMunicipio(
                         userDetails.getUsername()

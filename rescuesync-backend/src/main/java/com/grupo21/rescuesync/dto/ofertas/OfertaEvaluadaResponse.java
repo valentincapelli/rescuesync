@@ -1,0 +1,45 @@
+package com.grupo21.rescuesync.dto.ofertas;
+
+import com.grupo21.rescuesync.model.ClasificacionOferta;
+import com.grupo21.rescuesync.model.EstadoOferta;
+import com.grupo21.rescuesync.model.NivelCompetencia;
+import com.grupo21.rescuesync.model.NivelGravedad;
+import com.grupo21.rescuesync.model.Oferta;
+import com.grupo21.rescuesync.model.ValidacionOferta;
+
+import java.time.LocalDate;
+
+/** Oferta evaluada con el perfil del Sistema Nacional, para la pantalla de selección del municipio. */
+public record OfertaEvaluadaResponse(
+        Long id,
+        Long loteId,
+        String ongNombre,
+        Integer cantidadOfrecida,
+        String observaciones,
+        EstadoOferta estado,
+        Validacion validacion
+) {
+
+    /** Null si la oferta se marcó EVALUADA sin pasar por la validación nacional (datos de demo). */
+    public record Validacion(
+            ClasificacionOferta clasificacion,
+            NivelCompetencia nivelCompetencia,
+            NivelGravedad nivelRiesgoMax,
+            LocalDate certificacionVence,
+            String observaciones
+    ) {}
+
+    public static OfertaEvaluadaResponse de(Oferta oferta) {
+        ValidacionOferta v = oferta.getValidacion();
+        Validacion validacion = v == null || v.getClasificacion() == null ? null
+                : new Validacion(v.getClasificacion(), v.getNivelCompetencia(), v.getNivelRiesgoMax(),
+                        v.getCertificacionVence(), v.getObservaciones());
+        return new OfertaEvaluadaResponse(oferta.getId(), oferta.getLote().getId(), oferta.getOng().getNombre(),
+                oferta.getCantidadOfrecida(), oferta.getObservaciones(), oferta.getEstado(), validacion);
+    }
+
+    /** Las ofertas sin habilitación no se muestran para seleccionar (eslabón 5: solo ofertas validadas). */
+    public boolean seleccionable() {
+        return validacion == null || validacion.clasificacion().esSeleccionable();
+    }
+}
