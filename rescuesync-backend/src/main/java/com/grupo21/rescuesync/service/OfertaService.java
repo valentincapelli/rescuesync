@@ -391,6 +391,16 @@ public class OfertaService {
             );
         }
 
+        // 5c. Una oferta mayor al stock nacional fallaría al comprometerse y dejaría trabado el caso en Bonita
+        boolean seleccionaSinStock = ofertasEvaluadas.stream()
+                .filter(oferta -> idsSeleccionados.contains(oferta.getId()))
+                .anyMatch(oferta -> oferta.getValidacion().stockInsuficiente(oferta.getCantidadOfrecida()));
+        if (seleccionaSinStock) {
+            throw new BusinessException(
+                    "Una o más ofertas superan el stock disponible de la ONG en el Sistema Nacional"
+            );
+        }
+
         // 6. Actualizar estados de ofertas y lotes
         int seleccionadas = 0;
         int rechazadas = 0;

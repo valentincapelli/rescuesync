@@ -45,4 +45,22 @@ public class ValidacionOferta {
 
     @Column(name = "validacion_evaluada_en")
     private Instant evaluadaEn;
+
+    /**
+     * Stock que la ONG tiene disponible en el Sistema Nacional, en la unidad del lote, al evaluar.
+     * Null si el Sistema Nacional no lo informó (versiones anteriores) o la oferta no está habilitada.
+     */
+    @Column(name = "validacion_stock_disponible")
+    private Integer stockDisponible;
+
+    public ValidacionOferta(ClasificacionOferta clasificacion, NivelCompetencia nivelCompetencia,
+                            NivelGravedad nivelRiesgoMax, LocalDate certificacionVence, String observaciones,
+                            Instant evaluadaEn) {
+        this(clasificacion, nivelCompetencia, nivelRiesgoMax, certificacionVence, observaciones, evaluadaEn, null);
+    }
+
+    /** True si se sabe que lo ofrecido supera el stock disponible: comprometerlo fallaría en el Sistema Nacional. */
+    public boolean stockInsuficiente(int cantidadOfrecida) {
+        return stockDisponible != null && cantidadOfrecida > stockDisponible;
+    }
 }

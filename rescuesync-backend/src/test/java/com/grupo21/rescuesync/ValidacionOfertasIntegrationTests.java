@@ -188,6 +188,43 @@ class ValidacionOfertasIntegrationTests {
     }
 
     @Test
+    void unaOfertaMayorAlStockNacionalNoSeOfreceNiSePuedeSeleccionar() throws Exception {
+        evaluacionEnBonita(evaluacionConStock(59)); // la oferta principal es de 60
+        listar().andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].lotes[0].ofertas", hasSize(1)))
+                .andExpect(jsonPath("$[0].lotes[0].ofertas[0].id").value(apoyo))
+                .andExpect(jsonPath("$[0].lotes[0].ofertasSinHabilitacion", hasSize(2)))
+                .andExpect(jsonPath("$[0].lotes[0].ofertasSinHabilitacion[?(@.id==" + principal
+                        + ")].validacion.stockDisponible").value(59))
+                .andExpect(jsonPath("$[0].lotes[0].ofertasSinHabilitacion[?(@.id==" + principal
+                        + ")].validacion.observaciones").value(
+                        "Stock insuficiente en el Sistema Nacional: la ONG ofrece 60 raciones pero tiene 59 disponibles."));
+
+        mockMvc.perform(put("/api/ofertas/seleccion")
+                        .cookie(operador)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"emergenciaId\": " + emergenciaId + ", \"ofertaIds\": [" + principal + "]}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value(
+                        "Una o más ofertas superan el stock disponible de la ONG en el Sistema Nacional"));
+
+        assertEquals("EVALUADA", estadoOferta(principal));
+        assertEquals("COBERTURA_EVALUADA", jdbcTemplate.queryForObject(
+                "SELECT estado FROM emergencias WHERE id = ?", String.class, emergenciaId));
+    }
+
+    @Test
+    void unaOfertaQueEntraEnElStockNacionalSigueSiendoSeleccionable() throws Exception {
+        evaluacionEnBonita(evaluacionConStock(60));
+
+        listar().andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].lotes[0].ofertas", hasSize(2)))
+                .andExpect(jsonPath("$[0].lotes[0].ofertas[0].id").value(principal))
+                .andExpect(jsonPath("$[0].lotes[0].ofertas[0].validacion.stockDisponible").value(60))
+                .andExpect(jsonPath("$[0].lotes[0].ofertasSinHabilitacion", hasSize(1)));
+    }
+
+    @Test
     void sinCasoEnBonitaNoConsulta() throws Exception {
         jdbcTemplate.update("UPDATE emergencias SET bonita_case_id = NULL WHERE id = ?", emergenciaId);
 
@@ -219,6 +256,13 @@ class ValidacionOfertasIntegrationTests {
                     "estadoHabilitacion": "HABILITADA", "capacidadesHabilitadas": [],
                     "observaciones": "La ONG no tiene una certificación vigente"}}
                 ]}]""".formatted(loteId, principal, apoyo, sinHabilitacion);
+    }
+
+    /** Igual que evaluacion(), con el stock nacional (en raciones) que informa el SN para la oferta principal. */
+    private String evaluacionConStock(int disponible) {
+        return evaluacion().replace("\"observaciones\": \"Se informan el nivel de competencia\"}}",
+                "\"observaciones\": \"Se informan el nivel de competencia\", \"disponibilidad\": "
+                        + "[{\"unidadMedida\": \"raciones\", \"cantidadDisponible\": " + disponible + "}]}}");
     }
 
     private long crearOferta(String ong, int cantidad) {

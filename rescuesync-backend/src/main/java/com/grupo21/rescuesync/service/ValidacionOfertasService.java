@@ -170,7 +170,7 @@ public class ValidacionOfertasService {
                     continue;
                 }
                 oferta.setValidacion(clasificar(emergencia.getNivelGravedad(), oferta.getLote().getTipoRecurso(),
-                        perfil, ahora));
+                        perfil, ahora, oferta.getLote().getUnidadMedida()));
                 historialEstadoService.cambiarEstado(oferta, EstadoOferta.EVALUADA);
                 evaluadas++;
             }
@@ -185,6 +185,12 @@ public class ValidacionOfertasService {
      */
     public static ValidacionOferta clasificar(NivelGravedad gravedad, TipoRecurso tipoRecurso, JsonNode perfil,
                                        Instant evaluadaEn) {
+        return clasificar(gravedad, tipoRecurso, perfil, evaluadaEn, null);
+    }
+
+    /** Igual que la anterior; con la unidad del lote también toma el stock informado por el Sistema Nacional. */
+    public static ValidacionOferta clasificar(NivelGravedad gravedad, TipoRecurso tipoRecurso, JsonNode perfil,
+                                       Instant evaluadaEn, String unidadLote) {
         String observaciones = recortar(perfil.path("observaciones").asText(null));
         if (!"HABILITADA".equals(perfil.path("estadoHabilitacion").asText())) {
             return sinHabilitacion(observaciones, evaluadaEn);
@@ -204,7 +210,32 @@ public class ValidacionOfertasService {
                 ? ClasificacionOferta.PRINCIPAL
                 : ClasificacionOferta.APOYO;
         return new ValidacionOferta(clasificacion, capacidad.competencia(), capacidad.riesgo(),
-                capacidad.vence(), observaciones, evaluadaEn);
+                capacidad.vence(), observaciones, evaluadaEn, stockDisponible(perfil, unidadLote));
+    }
+
+    /**
+     * Stock disponible de la ONG en la unidad del lote, sumando las entradas de {@code disponibilidad} con esa
+     * unidad (comparadas sin distinguir mayúsculas ni espacios, igual que el conector de Bonita). Si la ONG no
+     * tiene recursos con esa unidad, es 0: el compromiso fallaría. Null si el Sistema Nacional no informó el
+     * dato, para no bloquear con versiones que todavía no lo envían.
+     */
+    static Integer stockDisponible(JsonNode perfil, String unidadLote) {
+        JsonNode disponibilidad = perfil.path("disponibilidad");
+        if (unidadLote == null || !disponibilidad.isArray()) {
+            return null;
+        }
+        String unidad = normalizarUnidad(unidadLote);
+        int total = 0;
+        for (JsonNode entrada : disponibilidad) {
+            if (unidad.equals(normalizarUnidad(entrada.path("unidadMedida").asText("")))) {
+                total += entrada.path("cantidadDisponible").asInt(0);
+            }
+        }
+        return total;
+    }
+
+    private static String normalizarUnidad(String valor) {
+        return valor.trim().toLowerCase(java.util.Locale.ROOT).replaceAll("\\s+", " ");
     }
 
     private static ValidacionOferta sinHabilitacion(String observaciones, Instant evaluadaEn) {

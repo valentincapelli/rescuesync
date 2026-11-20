@@ -26,21 +26,37 @@ public record OfertaEvaluadaResponse(
             NivelCompetencia nivelCompetencia,
             NivelGravedad nivelRiesgoMax,
             LocalDate certificacionVence,
-            String observaciones
+            /** Motivo informativo; si lo ofrecido supera el stock nacional, explica por qué no se puede elegir. */
+            String observaciones,
+            /** Stock de la ONG en el Sistema Nacional al evaluar; null si no se informó. */
+            Integer stockDisponible
     ) {}
 
     public static OfertaEvaluadaResponse de(Oferta oferta) {
         ValidacionOferta v = oferta.getValidacion();
         Validacion validacion = v == null || v.getClasificacion() == null ? null
                 : new Validacion(v.getClasificacion(), v.getNivelCompetencia(), v.getNivelRiesgoMax(),
-                        v.getCertificacionVence(), v.getObservaciones());
+                        v.getCertificacionVence(), observaciones(oferta, v), v.getStockDisponible());
         return new OfertaEvaluadaResponse(oferta.getId(), oferta.getLote().getId(), oferta.getOng().getNombre(),
                 oferta.getCantidadOfrecida(), oferta.getObservaciones(), oferta.getEstado(), validacion);
     }
 
-    /** Las ofertas sin habilitación no se muestran para seleccionar (eslabón 5: solo ofertas validadas). */
+    private static String observaciones(Oferta oferta, ValidacionOferta v) {
+        if (v.stockInsuficiente(oferta.getCantidadOfrecida())) {
+            return "Stock insuficiente en el Sistema Nacional: la ONG ofrece " + oferta.getCantidadOfrecida()
+                    + " " + oferta.getLote().getUnidadMedida() + " pero tiene " + v.getStockDisponible()
+                    + " disponibles.";
+        }
+        return v.getObservaciones();
+    }
+
+    /**
+     * Se puede seleccionar si está validada (eslabón 5: solo ofertas validadas) y, cuando el Sistema Nacional
+     * informó el stock, si lo ofrecido no lo supera: comprometerla fallaría y dejaría trabado el caso.
+     */
     public boolean seleccionable() {
         return validacion != null && validacion.clasificacion() != null
-                && validacion.clasificacion().esSeleccionable();
+                && validacion.clasificacion().esSeleccionable()
+                && (validacion.stockDisponible() == null || cantidadOfrecida <= validacion.stockDisponible());
     }
 }

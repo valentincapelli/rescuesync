@@ -69,7 +69,10 @@ export interface ValidacionOferta {
   nivelCompetencia: NivelCompetencia | null;
   nivelRiesgoMax: NivelGravedad | null;
   certificacionVence: string | null; // yyyy-MM-dd
+  // Motivo informativo; si la oferta supera el stock nacional, explica por qué no se puede elegir.
   observaciones: string | null;
+  // Stock de la ONG en el Sistema Nacional al evaluar; null si no se informó.
+  stockDisponible: number | null;
 }
 
 // Espeja OfertaEvaluadaResponse.
@@ -87,7 +90,7 @@ export interface LoteConOfertasEvaluadas {
   estado: EstadoLote;
   // Validadas (principal o apoyo): las únicas que se pueden seleccionar.
   ofertas: OfertaEvaluada[];
-  // Evaluadas sin certificación vigente: se informan, no se seleccionan.
+  // Evaluadas sin certificación vigente o con stock nacional insuficiente: se informan, no se seleccionan.
   ofertasSinHabilitacion: OfertaEvaluada[];
 }
 
