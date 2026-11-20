@@ -101,7 +101,7 @@ Las credenciales del seed (contraseña `123456` para todos, incluido el ADMIN) s
 ### Plan free: tener en cuenta
 
 - **El servicio se duerme** tras ~15 minutos sin tráfico. El primer request después tarda **~30-60 s** mientras arranca: el conector de Bonita tiene que tener un timeout mayor (o hacer un request de "despertar" antes, por ejemplo a `/actuator/health`).
-- La base free de Render **vence a los 30 días** de creada; después hay que recrearla (y volver a cargar el seed) o pasarla a un plan pago.
+- La base free de Render **vence a los 30 días** de creada; después hay que recrearla (y volver a cargar el seed) o pasarla a un plan pago. Procedimiento para renovarla sin perder datos y fecha del próximo vencimiento: [`docs/render-renovar-base-sistema-nacional.md`](../docs/render-renovar-base-sistema-nacional.md).
 - 512 MB de RAM: la JVM usa como máximo el 75 % para el heap (`-XX:MaxRAMPercentage=75`). Si Render reinicia el servicio por memoria, bajarlo con `JAVA_TOOL_OPTIONS`.
 
 ### Deuda: esquema sin migraciones
