@@ -122,7 +122,7 @@ Las estimaciones son un primer cálculo.
 
 | # | Ajuste | Estimación | Tarea E4 | Responsable |
 | --- | --- | --- | --- | --- |
-| 1 | Push del merge de E3-10 a `development` | 10 min | E4-01 | |
+| 1 | ~~Push del merge de E3-10 a `development`~~ **Hecho** (19/11): el `.bos` une E3-10 (1.2) y E4-02. Ver [`merge-bonitaapi-development.md`](merge-bonitaapi-development.md) | — | E4-01 | |
 | 2 | Verificar el SN en Render (`/actuator/health`, `/api/info`, `/swagger-ui.html`) | 20 min | E4-01 | |
 | 3 | Seleccionar oferta: endpoint, permiso, estados y pantalla | 6 h | E4-04 | |
 | 4 | Notificar a ONG y recibir notificación: endpoint, estado y pantalla | 5 h | E4-04 | |

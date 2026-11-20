@@ -4,7 +4,9 @@ Resuelve el ajuste 20 de [`e4-01-ajustes-pendientes.md`](e4-01-ajustes-pendiente
 
 > Alcance: proceso y backend. **No incluye pantalla** para el Centro Coordinador (queda en el ajuste 20 de E4-01).
 
-## 1. Modelo en Bonita (`rescue-sync.bos`, pool RescueSync 1.1)
+## 1. Modelo en Bonita (`rescue-sync.bos`, pool RescueSync 1.2)
+
+Se implementó sobre la 1.1. Con el merge de E3-10 quedó dentro de la 1.2: ver [`merge-bonitaapi-development.md`](merge-bonitaapi-development.md).
 
 | Elemento | Configuración |
 | --- | --- |

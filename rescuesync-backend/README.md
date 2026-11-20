@@ -84,6 +84,17 @@ en cada una de ellas. Para otra base, ajustar los parámetros de conexión de `p
 
 ## Estructura (por capas)
 
+### CUIT para la integración nacional (E3-10)
+
+Las ofertas consolidadas incluyen ahora `ong.cuit` (11 dígitos, sin guiones).
+En bases existentes, ejecutar `scripts/ongs_cuit.sql` sobre **RescueSync** y
+completar el CUIT verificado de las ONGs que liste. El campo admite `null` para
+conservar los registros anteriores, pero Bonita lo requiere al evaluar ofertas.
+El script y el seed completan las dos ONGs de demostración que coinciden con el
+Sistema Nacional. Ver la [guía E3-10](../docs/e3-10-sistema-nacional.md).
+
+### Paquetes
+
 ```
 src/main/java/com/grupo21/rescuesync/
 ├── RescueSyncApplication.java
