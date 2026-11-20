@@ -49,7 +49,7 @@ class DespliegueIntegrationTests {
 
     @BeforeEach
     void preparar() {
-        for (String tabla : new String[]{"novedades_despliegue", "despliegues", "intenciones_seleccion_bonita", "historial_estados", "ofertas",
+        for (String tabla : new String[]{"novedades_despliegue", "despliegues", "historial_estados", "ofertas",
                 "lotes", "emergencias", "usuarios", "ongs", "municipios"}) db.update("DELETE FROM " + tabla);
         long municipio = insertar("municipios", "nombre", "Municipio prueba");
         long ongId = insertar("ongs", "nombre", "ONG prueba");
@@ -216,19 +216,6 @@ class DespliegueIntegrationTests {
         mvc.perform(post(rutaSync()).cookie(centro)).andExpect(status().isBadGateway());
         assertThat(contar("despliegues", "1=1")).isZero();
         assertThat(estadoLocal("emergencias", emergencia)).isEqualTo("ADJUDICADA");
-    }
-
-    @Test
-    void estadoDeAdjudicacionEsVisibleSinAfirmarCompromisoYRespetaPermisos() throws Exception {
-        insertar("intenciones_seleccion_bonita", "oferta_id,estado,version,intentos",
-                oferta, "PENDIENTE", 0, 0);
-        mvc.perform(get("/api/emergencias/" + emergencia + "/selecciones").cookie(centro))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].ofertaId").value(oferta))
-                .andExpect(jsonPath("$[0].estadoIntegracion").value("PENDIENTE"))
-                .andExpect(jsonPath("$[0].comprometidoEn").doesNotExist());
-        mvc.perform(get("/api/emergencias/" + emergencia + "/selecciones").cookie(ong))
-                .andExpect(status().isForbidden());
     }
 
     private EstadoDespliegueBonita estado(String monitoreo, String finalizar, Set<String> completadas, Set<Long> liberadas, boolean terminado) {

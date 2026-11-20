@@ -32,13 +32,3 @@ export interface Despliegue {
   pendienteSincronizacion: boolean;
   novedades: NovedadDespliegue[];
 }
-
-export interface SeleccionOfertaEstado {
-  ofertaId: number;
-  ong: string;
-  estadoIntegracion: 'PENDIENTE' | 'DESPACHANDO' | 'EN_CICLO' | 'LIBERADA' | 'INCIDENTE';
-  detalleIncidente: string | null;
-  comprometidoEn: string | null;
-  finalizadoEn: string | null;
-  liberadoEn: string | null;
-}

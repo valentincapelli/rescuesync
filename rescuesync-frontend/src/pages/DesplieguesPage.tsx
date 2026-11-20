@@ -4,26 +4,15 @@ import './LotesPage.css';
 import './DesplieguesPage.css';
 import { ApiError } from '../api/client';
 import { listarEmergencias } from '../api/emergencias';
-import { listarDespliegues, listarSelecciones, registrarSeguimiento } from '../api/despliegues';
+import { listarDespliegues, registrarSeguimiento } from '../api/despliegues';
 import { ActividadDespliegue } from '../components/despliegues/ActividadDespliegue';
 import type { Emergencia } from '../types/emergencia';
-import type { Despliegue, SeleccionOfertaEstado, TipoNovedad } from '../types/despliegue';
-
-function estadoSeleccion(s: SeleccionOfertaEstado): string {
-  if (s.estadoIntegracion === 'INCIDENTE') return 'Incidente de integración';
-  if (s.liberadoEn) return 'Liberación nacional confirmada';
-  if (s.finalizadoEn) return 'Actividad finalizada · Liberación pendiente';
-  if (s.comprometidoEn) return 'Compromiso nacional confirmado · Actividad en ejecución';
-  if (s.estadoIntegracion === 'EN_CICLO') return 'Pendiente de confirmación del compromiso nacional';
-  if (s.estadoIntegracion === 'DESPACHANDO') return 'Pendiente de sincronización con Bonita';
-  return 'Adjudicación registrada · Esperando tarea de Bonita';
-}
+import type { Despliegue, TipoNovedad } from '../types/despliegue';
 
 export function DesplieguesPage({ esOng = false }: { esOng?: boolean }) {
   const [emergencias, setEmergencias] = useState<Emergencia[]>([]);
   const [emergenciaId, setEmergenciaId] = useState<number | null>(null);
   const [actividades, setActividades] = useState<Despliegue[]>([]);
-  const [selecciones, setSelecciones] = useState<SeleccionOfertaEstado[]>([]);
   const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -54,10 +43,7 @@ export function DesplieguesPage({ esOng = false }: { esOng?: boolean }) {
     if (!esOng && emergenciaId === null) { setCargando(false); return; }
     setCargando(true);
     listarDespliegues(esOng ? null : emergenciaId, actualizar)
-      .then(async (data) => {
-        const estados = !esOng && emergenciaId !== null ? await listarSelecciones(emergenciaId) : [];
-        if (!cancelado) { setActividades(data); setSelecciones(estados); }
-      })
+      .then((data) => { if (!cancelado) setActividades(data); })
       .catch((err: unknown) => {
         if (!cancelado) setError(err instanceof ApiError ? err.message : 'No se pudo consultar el seguimiento.');
       })
@@ -97,7 +83,7 @@ export function DesplieguesPage({ esOng = false }: { esOng?: boolean }) {
         <label htmlFor="emergencia-despliegue">Emergencia</label>
         <select id="emergencia-despliegue" value={emergenciaId ?? ''} disabled={ocupado}
           onChange={(e) => {
-            setActividades([]); setSelecciones([]); setAviso(null); setActualizar(false);
+            setActividades([]); setAviso(null); setActualizar(false);
             setEmergenciaId(e.target.value ? Number(e.target.value) : null);
           }}>
           <option value="">Elegí una emergencia…</option>
@@ -112,14 +98,6 @@ export function DesplieguesPage({ esOng = false }: { esOng?: boolean }) {
     {error && <p className="form-banner error" role="alert">{error}</p>}
     {aviso && <p className="form-banner success" role="status">{aviso}</p>}
     {cargando && <p className="muted" role="status">Consultando actividades…</p>}
-    {!esOng && selecciones.length > 0 && <div className="despliegue-lista" aria-label="Estado de ofertas adjudicadas">
-      {selecciones.filter((s) => s.estadoIntegracion === 'INCIDENTE'
-        || !actividades.some((d) => d.ofertaId === s.ofertaId)).map((s) => <article className="actividad-despliegue" key={s.ofertaId}>
-        <h3>Oferta #{s.ofertaId} · {s.ong}</h3>
-        <span className="badge">{estadoSeleccion(s)}</span>
-        {s.detalleIncidente && <p className="form-banner error" role="alert">{s.detalleIncidente}</p>}
-      </article>)}
-    </div>}
     {!cargando && !error && actividades.length === 0 && (esOng || emergenciaId !== null) &&
       <p className="form-banner info">No hay despliegues con compromiso confirmado. Usá Actualizar para consultar los últimos avances del proceso.</p>}
     <div className="despliegue-lista" aria-busy={ocupado}>
