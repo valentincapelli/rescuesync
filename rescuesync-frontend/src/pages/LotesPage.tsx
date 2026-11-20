@@ -5,6 +5,7 @@ import { ApiError } from '../api/client';
 import { listarEmergencias, publicarConvocatoria } from '../api/emergencias';
 import { crearLote, editarLote, eliminarLote, listarLotes } from '../api/lotes';
 import { LoteForm } from '../components/LoteForm';
+import { CoberturaPanel } from '../components/CoberturaPanel';
 import {
   ESTADO_EMERGENCIA_LABELS,
   ESTADOS_DESGLOSE_ABIERTO,
@@ -78,7 +79,7 @@ export function LotesPage() {
     return () => {
       cancelado = true;
     };
-  }, [seleccionadaId]);
+  }, [seleccionadaId, seleccionada?.estado]);
 
   // Refleja en la lista un cambio de estado de la emergencia hecho por el backend.
   function actualizarEstado(id: number, estado: Emergencia['estado']) {
@@ -146,7 +147,7 @@ export function LotesPage() {
 
   return (
     <section>
-      <h2>Desglosar emergencia en lotes</h2>
+      <h2>Lotes y cobertura de emergencias</h2>
       <p>
         El Centro Coordinador Regional revisa una emergencia registrada, la desglosa en lotes de
         necesidades (ej: 5 paramédicos, 1000 raciones) y publica la convocatoria para que las ONGs
@@ -281,6 +282,8 @@ export function LotesPage() {
           )}
         </>
       )}
+      {seleccionada && !desgloseAbierto && <CoberturaPanel key={seleccionada.id}
+        emergenciaId={seleccionada.id} onActualizada={(e) => actualizarEstado(e.id, e.estado)} />}
     </section>
   );
 }

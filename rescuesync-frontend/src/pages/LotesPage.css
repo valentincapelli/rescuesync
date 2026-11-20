@@ -47,6 +47,10 @@
   overflow-x: auto;
 }
 
+.cobertura-panel {
+  margin-top: 1.5rem;
+}
+
 .lotes-table {
   width: 100%;
   border-collapse: collapse;

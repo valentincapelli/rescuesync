@@ -7,6 +7,7 @@ export interface NotificacionResponse {
   tipo: 'OFERTA_SELECCIONADA' | 'OFERTA_RECHAZADA';
   fechaCreacion: string;
   leida: boolean;
+  recepcion: 'NO_REQUIERE' | 'SIN_LEER' | 'PENDIENTE' | 'CONFIRMADA';
 }
 
 export function obtenerNotificaciones(): Promise<NotificacionResponse[]> {

@@ -2,6 +2,7 @@
 // (com.grupo21.rescuesync.model / dto.ofertas).
 import type { EstadoEmergencia, NivelGravedad, TipoDesastre } from './emergencia';
 import type { EstadoLote, TipoRecurso } from './lote';
+import type { Lote } from './lote';
 
 export type EstadoOferta =
   | 'PENDIENTE'
@@ -38,6 +39,13 @@ export interface Oferta {
   estado: EstadoOferta;
 }
 
+export interface OfertaPropia {
+  oferta: Oferta;
+  lote: Lote;
+  emergenciaId: number;
+  editable: boolean;
+}
+
 // Espeja ClasificacionOferta: cómo se adapta la oferta según el perfil del Sistema Nacional.
 export type ClasificacionOferta = 'PRINCIPAL' | 'APOYO' | 'SIN_HABILITACION';
 
@@ -66,7 +74,7 @@ export interface ValidacionOferta {
 
 // Espeja OfertaEvaluadaResponse.
 export interface OfertaEvaluada extends Oferta {
-  // Null solo en datos de demo marcados EVALUADA sin validación nacional.
+  // Datos incompletos sin validación nacional: no se pueden seleccionar.
   validacion: ValidacionOferta | null;
 }
 

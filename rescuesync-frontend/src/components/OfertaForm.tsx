@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import type { FormEvent } from 'react';
 import { ApiError } from '../api/client';
 import type { Lote } from '../types/lote';
@@ -48,12 +48,18 @@ function validate(form: OfertaFormState): FieldErrors {
 
 interface Props {
   lote: Lote;
+  oferta?: Oferta;
+  onCancel?: () => void;
   onSubmit: (request: CrearOfertaRequest) => Promise<Oferta>;
 }
 
-export function OfertaForm({ lote, onSubmit }: Props) {
+export function OfertaForm({ lote, oferta: inicial, onSubmit, onCancel }: Props) {
+  const formId = useId();
   const [form, setForm] =
-    useState<OfertaFormState>(emptyForm);
+    useState<OfertaFormState>(() => inicial ? {
+      cantidadOfrecida: String(inicial.cantidadOfrecida),
+      observaciones: inicial.observaciones ?? '',
+    } : emptyForm);
 
   const [fieldErrors, setFieldErrors] =
     useState<FieldErrors>({});
@@ -107,7 +113,7 @@ export function OfertaForm({ lote, onSubmit }: Props) {
       });
 
       setCreada(oferta);
-      setForm(emptyForm);
+      if (!inicial) setForm(emptyForm);
       setFieldErrors({});
     } catch (err) {
       if (
@@ -121,7 +127,7 @@ export function OfertaForm({ lote, onSubmit }: Props) {
         setGeneralError(err.message);
       } else {
         setGeneralError(
-          'No se pudo registrar la oferta. Intentá de nuevo.',
+          'No se pudo guardar la oferta. Intentá de nuevo.',
         );
       }
     } finally {
@@ -135,7 +141,7 @@ export function OfertaForm({ lote, onSubmit }: Props) {
       onSubmit={handleSubmit}
       noValidate
     >
-      <h3>Ofertar para el lote #{lote.id}</h3>
+      <h3>{inicial ? `Editar oferta #${inicial.id}` : `Ofertar para el lote #${lote.id}`}</h3>
 
       <p className="muted">
         Podés cubrir todo o parte de lo solicitado. Se
@@ -147,7 +153,7 @@ export function OfertaForm({ lote, onSubmit }: Props) {
           className="form-banner success"
           role="status"
         >
-          Oferta #{creada.id} registrada para el lote #
+          Oferta #{creada.id} {inicial ? 'actualizada' : 'registrada'} para el lote #
           {creada.loteId}: {creada.ongNombre} ofrece{' '}
           {creada.cantidadOfrecida.toLocaleString('es-AR')}{' '}
           {lote.unidadMedida}. Estado:{' '}
@@ -171,12 +177,12 @@ export function OfertaForm({ lote, onSubmit }: Props) {
             : ''
         }`}
       >
-        <label htmlFor="cantidadOfrecida">
+        <label htmlFor={`${formId}-cantidadOfrecida`}>
           Cantidad ofrecida ({lote.unidadMedida})
         </label>
 
         <input
-          id="cantidadOfrecida"
+          id={`${formId}-cantidadOfrecida`}
           type="number"
           min={1}
           max={2_147_483_647}
@@ -197,14 +203,14 @@ export function OfertaForm({ lote, onSubmit }: Props) {
           }
           aria-describedby={
             fieldErrors.cantidadOfrecida
-              ? 'cantidadOfrecida-error'
+              ? `${formId}-cantidadOfrecida-error`
               : undefined
           }
         />
 
         {fieldErrors.cantidadOfrecida && (
           <span
-            id="cantidadOfrecida-error"
+            id={`${formId}-cantidadOfrecida-error`}
             className="field-error"
           >
             {fieldErrors.cantidadOfrecida}
@@ -219,12 +225,12 @@ export function OfertaForm({ lote, onSubmit }: Props) {
             : ''
         }`}
       >
-        <label htmlFor="observaciones">
+        <label htmlFor={`${formId}-observaciones`}>
           Observaciones (opcional)
         </label>
 
         <textarea
-          id="observaciones"
+          id={`${formId}-observaciones`}
           disabled={submitting}
           value={form.observaciones}
           onChange={(e) =>
@@ -239,14 +245,14 @@ export function OfertaForm({ lote, onSubmit }: Props) {
           }
           aria-describedby={
             fieldErrors.observaciones
-              ? 'observaciones-error'
+              ? `${formId}-observaciones-error`
               : undefined
           }
         />
 
         {fieldErrors.observaciones && (
           <span
-            id="observaciones-error"
+            id={`${formId}-observaciones-error`}
             className="field-error"
           >
             {fieldErrors.observaciones}
@@ -260,9 +266,10 @@ export function OfertaForm({ lote, onSubmit }: Props) {
           disabled={submitting}
         >
           {submitting
-            ? 'Registrando…'
-            : 'Registrar oferta'}
+            ? 'Guardando…'
+            : inicial ? 'Guardar cambios' : 'Registrar oferta'}
         </button>
+        {onCancel && <button type="button" className="secondary" disabled={submitting} onClick={onCancel}>Cancelar</button>}
       </div>
     </form>
   );

@@ -7,6 +7,7 @@ import { listarEmergencias } from '../api/emergencias';
 import { listarLotes } from '../api/lotes';
 import { crearOferta } from '../api/ofertas';
 import { OfertaForm } from '../components/OfertaForm';
+import { OfertasPropias } from '../components/OfertasPropias';
 import { NIVEL_GRAVEDAD_LABELS, TIPO_DESASTRE_LABELS, type Emergencia } from '../types/emergencia';
 import { TIPO_RECURSO_LABELS, type Lote } from '../types/lote';
 import type { CrearOfertaRequest } from '../types/oferta';
@@ -27,6 +28,7 @@ export function OfertasPage() {
   const [errorEmergencias, setErrorEmergencias] = useState<string | null>(null);
   const [errorLotes, setErrorLotes] = useState<string | null>(null);
   const [recarga, setRecarga] = useState(0);
+  const [recargaPropias, setRecargaPropias] = useState(0);
 
   const emergencia = emergencias.find((e) => e.id === emergenciaId) ?? null;
   const lote = lotes.find((l) => l.id === loteId) ?? null;
@@ -78,7 +80,9 @@ export function OfertasPage() {
     if (!lote) throw new Error('Elegí un lote publicado.');
     setGuardando(true);
     try {
-      return await crearOferta(lote.id, request);
+      const oferta = await crearOferta(lote.id, request);
+      setRecargaPropias((v) => v + 1);
+      return oferta;
     } finally {
       setGuardando(false);
     }
@@ -175,6 +179,7 @@ export function OfertasPage() {
           )}
         </>
       )}
+      <OfertasPropias recarga={recargaPropias} />
     </section>
   );
 }

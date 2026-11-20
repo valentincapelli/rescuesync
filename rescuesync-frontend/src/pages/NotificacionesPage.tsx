@@ -69,14 +69,7 @@ export function NotificacionesPage({
 
     try {
       await marcarComoLeida(notificacion.id);
-
-      setNotificaciones((actuales) =>
-        actuales.map((n) =>
-          n.id === notificacion.id
-            ? { ...n, leida: true }
-            : n,
-        ),
-      );
+      setNotificaciones(await obtenerNotificaciones());
 
       onNotificacionesChange?.();
     } catch (err: unknown) {
@@ -184,6 +177,11 @@ export function NotificacionesPage({
 
                   <p>{notificacion.mensaje}</p>
 
+                  {notificacion.recepcion === 'PENDIENTE' && <p className="muted" role="status">
+                    Recepción registrada. Esperando el avance del proceso de esta oferta.
+                  </p>}
+                  {notificacion.recepcion === 'CONFIRMADA' && <p className="muted">Recepción confirmada.</p>}
+
                   <time dateTime={notificacion.fechaCreacion}>
                     {formatearFecha(notificacion.fechaCreacion)}
                   </time>
@@ -200,7 +198,7 @@ export function NotificacionesPage({
                   >
                     {marcandoId === notificacion.id
                       ? 'Guardando…'
-                      : 'Marcar como leída'}
+                      : notificacion.recepcion === 'SIN_LEER' ? 'Confirmar recepción' : 'Marcar como leída'}
                   </button>
                 )}
               </article>
