@@ -23,7 +23,7 @@ TASKS = {
     "Liberar recursos": ("LIBERAR", "ofertasEvaluadasJson", "liberacionNacionalJson"),
 }
 VARIABLES = {
-    "sistemaNacionalBaseUrl": ("java.lang.String", "http://localhost:8082"),
+    "sistemaNacionalBaseUrl": ("java.lang.String", "https://rescuesync-sistema-nacional-2qwh.onrender.com"),
     "ofertasEvaluadasJson": ("java.lang.String", "[]"),
     "compromisoNacionalJson": ("java.lang.String", "{}"),
     "liberacionNacionalJson": ("java.lang.String", "{}"),
