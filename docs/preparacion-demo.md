@@ -9,7 +9,7 @@ Pensado para una demo de unos 15 minutos. Los datos de esta guía salen de la pr
 | Servicio | Puerto | Comprobación |
 |---|---|---|
 | Frontend | 5173 | abre el login |
-| Backend | 8081 | `GET /actuator/health` |
+| Backend | 8081 | `GET /actuator/health` responde 401 (pide login): eso indica que está arriba |
 | Bonita (proceso RescueSync 1.2) | 8080 | abre el Portal |
 | Sistema Nacional local | 8082 | `GET /` responde 401 (pide login) |
 
@@ -18,12 +18,12 @@ Pensado para una demo de unos 15 minutos. Los datos de esta guía salen de la pr
 
 ### Qué Sistema Nacional usar
 
-El proceso de Bonita apunta por defecto a `http://localhost:8082`. Apuntar un caso al SN de Render solo se puede hacer por API (variable `sistemaNacionalBaseUrl`), no desde la pantalla. **Recomendación: hacer la demo con el SN local.**
+Desde el 24/11/2026 el proceso de Bonita (`rescue-sync.bos`) apunta **por defecto al SN de Render**, que es el que se usa en la demo. Para usar el SN local hay que cambiar el valor inicial de `sistemaNacionalBaseUrl` en Studio a `http://localhost:8082` y redesplegar.
 
-Si hay que mostrar el SN hosteado:
+Si hay que mostrar el SN hosteado (es lo que pide el guion de defensa del grupo):
 1. Despertarlo 2 minutos antes (en frío tarda 40 a 60 s): `curl https://rescuesync-sistema-nacional-2qwh.onrender.com/actuator/health`. Si Render no responde, no usarlo.
-2. Confirmar que el deploy incluye el stock: la respuesta de `POST /api/certificaciones/validar` debe traer `disponibilidad`.
-3. Cambiar `sistemaNacionalBaseUrl` del caso **antes** de que la ONG confirme la recepción de la notificación.
+2. Confirmar que el deploy incluye el stock: la respuesta de `POST /api/certificaciones/validar` debe traer `disponibilidad`. Verificado el 24/11/2026 tras el redeploy; si falta, no se bloquea la selección por stock.
+3. Comprobar que el proceso desplegado sea el del `.bos` actual: la variable `sistemaNacionalBaseUrl` de un caso nuevo tiene que mostrar la URL de Render (ver `docs/defensa-oral.md`, sección 3.1).
 
 ### Datos
 
