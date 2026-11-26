@@ -10,8 +10,8 @@
     psql -h localhost -p 5433 -U rescuesync -d rescuesync -v ON_ERROR_STOP=1 \
       -f scripts/seed-indicadores-demo.sql
 
-  Qué carga: 10 emergencias repartidas en los últimos ~6 meses, en todos los tramos del flujo
-  (3 cerradas, 2 en ejecución, 1 adjudicada, 1 con cobertura parcial, 1 en convocatoria, 1 en
+  Qué carga: 13 emergencias repartidas en los últimos ~6 meses, en todos los tramos del flujo
+  (6 cerradas,2 en ejecución, 1 adjudicada, 1 con cobertura parcial, 1 en convocatoria, 1 en
   revisión y 1 recién registrada), con lotes cubiertos por una sola ONG o por consorcios de 2 y 3,
   ofertas comprometidas, finalizadas y rechazadas, y **todas sus filas de historial_estados**.
   Las fechas son relativas al momento de ejecución, así siempre caen en la ventana por defecto
@@ -233,6 +233,29 @@ BEGIN
 
     -- 10. Inundación recién registrada.
     PERFORM pg_temp.demo_emergencia('INUNDACION', 'BAJO', 'Ringuelet', 'La Plata', 2, 'REGISTRADA');
+
+    -- 11 a 13. Cerradas adicionales, para que la serie mensual no tenga meses vacíos y los
+    -- gráficos tengan más volumen.
+    e := pg_temp.demo_emergencia('INCENDIO', 'ALTO', 'Melchor Romero', 'La Plata', 125, 'CERRADA', 15);
+    l := pg_temp.demo_lote(e, 125, 'AGUA_POTABLE', 'Agua para brigadas', 1500, 'litros', 'CERRADO', 15);
+    PERFORM pg_temp.demo_oferta(l, e, 125, 'Cruz Roja Argentina', 900, 'FINALIZADA', 15);
+    PERFORM pg_temp.demo_oferta(l, e, 125, 'Banco de Alimentos La Plata', 600, 'FINALIZADA', 15);
+    l := pg_temp.demo_lote(e, 125, 'ALIMENTOS', 'Viandas para brigadas', 250, 'raciones', 'CERRADO', 15);
+    PERFORM pg_temp.demo_oferta(l, e, 125, 'Caritas Argentina', 250, 'FINALIZADA', 15);
+
+    e := pg_temp.demo_emergencia('INUNDACION', 'CRITICO', 'Villa Elvira', 'La Plata', 52, 'CERRADA', 11);
+    l := pg_temp.demo_lote(e, 52, 'ALIMENTOS', 'Raciones para evacuados', 700, 'raciones', 'CERRADO', 11);
+    PERFORM pg_temp.demo_oferta(l, e, 52, 'Cruz Roja Argentina', 450, 'FINALIZADA', 11);
+    PERFORM pg_temp.demo_oferta(l, e, 52, 'Banco de Alimentos La Plata', 250, 'FINALIZADA', 11);
+    l := pg_temp.demo_lote(e, 52, 'AGUA_POTABLE', 'Agua potable envasada', 2500, 'litros', 'CERRADO', 11);
+    PERFORM pg_temp.demo_oferta(l, e, 52, 'Caritas Argentina', 2500, 'FINALIZADA', 11);
+
+    e := pg_temp.demo_emergencia('TORMENTA_SEVERA', 'ALTO', 'Los Talas', 'Berisso', 42, 'CERRADA', 9);
+    l := pg_temp.demo_lote(e, 42, 'ABRIGO_Y_ROPA', 'Frazadas y colchones', 350, 'unidades', 'CERRADO', 9);
+    PERFORM pg_temp.demo_oferta(l, e, 42, 'Caritas Argentina', 200, 'FINALIZADA', 9);
+    PERFORM pg_temp.demo_oferta(l, e, 42, 'Cruz Roja Argentina', 150, 'FINALIZADA', 9);
+    l := pg_temp.demo_lote(e, 42, 'MEDICAMENTOS', 'Kits de primeros auxilios', 40, 'kits', 'CERRADO', 9);
+    PERFORM pg_temp.demo_oferta(l, e, 42, 'Cruz Roja Argentina', 40, 'FINALIZADA', 9);
 END $$;
 
 COMMIT;

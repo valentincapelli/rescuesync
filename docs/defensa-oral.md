@@ -120,7 +120,7 @@ Datos necesarios para los alternativos: una emergencia con ofertas **menores** a
 Requisito de la pauta: varias instancias finalizadas **en Bonita**, con registros consistentes en la base local.
 
 1. Antes de la defensa, correr de punta a punta al menos **3 o 4 emergencias reales** hasta CERRADA (idealmente una con consorcio, una con cobertura parcial y una con reapertura). Con eso `tiempos-etapas` tiene `muestras > 0`.
-2. Opcional: `scripts/seed-indicadores-demo.sql` suma 10 emergencias `[DEMO-E4]` para dar volumen, pero **no tienen caso de Bonita** (no aportan a los tiempos por etapa) y hoy **no está cargado** a propósito (sección 4.4).
+2. Para dar volumen a los gráficos, `scripts/seed-indicadores-demo.sql` suma 13 emergencias `[DEMO-E4]`. **Cargado el 26/11** en la PC principal. Son datos simulados **sin caso de Bonita**: no cuentan como instancias finalizadas del proceso ni aportan a los tiempos por etapa. También aparecen en las pantallas de trabajo: no operar sobre ellas.
 3. Verificar con el usuario `direccion@test.com` que no aparezca el aviso de "Bonita no disponible" y que los filtros de fecha incluyan los casos.
 
 ## 4. Precarga de datos
@@ -154,6 +154,8 @@ Comprobar para cada ONG con `POST /api/certificaciones/validar` que devuelva la 
 - Los servicios y las bases hay que levantarlos en este orden: bases, SN, backend (`PLAZO_CONVOCATORIA_MS=120000`), Bonita con las variables de servicio, frontend.
 
 ### 4.4 Estado del entorno al 24/11/2026
+
+> Registro histórico. Desde entonces se corrieron emergencias reales y el 26/11 se cargó el seed de indicadores (sección 3.4).
 
 Se levantaron las dos bases en Docker (`rescuesync-postgres` en 5433 y `sistema-nacional-postgres` en 5434) y Bonita. Todas las bases se dejaron **limpias, con solo los datos de soporte de la demo**. **No hay servicios de aplicación corriendo** (backend, frontend, SN local).
 

@@ -30,7 +30,7 @@ Si hay que mostrar el SN hosteado (es lo que pide el guion de defensa del grupo)
 - El seed del SN local (`scripts/seed-sistema-nacional-demo.sql`) crea solo las ONGs y los usuarios. **Las certificaciones y el inventario se cargan por la API del SN**, como admin (ver la sección 1 de `docs/e3-10-prueba-integracion.md`). En la prueba de esta sesión el SN local tenía: Cruz Roja con certificación de Alimentos (`INTERMEDIO`, riesgo hasta `ALTO`) y 200 raciones, y Cáritas con 40 raciones.
 - Comprobar antes de la demo, para cada ONG, que `POST /api/certificaciones/validar` devuelva la capacidad y la `disponibilidad` esperadas.
 - Para mostrar un consorcio, Cáritas necesita una certificación de Alimentos (`POST /api/ongs/2/certificaciones` con `ALIMENTOS`, `BASICO`, riesgo `MEDIO`; lo agregué en esta sesión).
-- Para un dashboard poblado: `scripts/seed-indicadores-demo.sql` (10 emergencias en todos los estados, con consorcios).
+- Para un dashboard poblado: `scripts/seed-indicadores-demo.sql` (13 emergencias simuladas, sin caso de Bonita, con consorcios).
 - **Regla de oro:** reiniciar la base del backend y los casos de Bonita **juntos o ninguno**. Si solo se reinicia uno, quedan emergencias cuyo caso ya no existe en Bonita (en la prueba fueron #9, #10 y #11).
 - Evitar datos de pruebas anteriores con prefijos como `[E2E-…]`: se ven en el dashboard.
 

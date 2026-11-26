@@ -135,7 +135,7 @@ docker compose up -d
    docker exec rescuesync-postgres psql -U rescuesync -d rescuesync -v ON_ERROR_STOP=1 -f /tmp/seed.sql
    ```
 
-**No cargar** `seed-indicadores-demo.sql` para la demo: crea emergencias sin caso de Bonita.
+**Opcional, para que el dashboard tenga gráficos con volumen:** cargar de la misma forma `scripts\seed-indicadores-demo.sql`. Agrega 13 emergencias `[DEMO-E4]` simuladas, sin caso de Bonita: no aportan a los tiempos por etapa y no hay que operar sobre ellas. Se puede volver a ejecutar (reemplaza solo lo suyo). Como consume ids de ofertas, cargarlo **antes** del paso 6.3.
 
 ### 6.3 Asignar el rango de ofertas
 
